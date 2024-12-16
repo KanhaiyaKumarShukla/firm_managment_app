@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "787961293745",
+    "project_id": "firm-management-1ba09",
+    "storage_bucket": "firm-management-1ba09.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:787961293745:android:36be9bf32567b0efe16b90",
+        "android_client_info": {
+          "package_name": "com.rach.firmmanagement"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAuRKNrwEXlENI5_9IevPiM_KcAapzghGk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

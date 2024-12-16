@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Firm Management</string>
+    <string name="title_activity_all_employee_attendance">AllEmployeeAttendance</string>
+</resources>
