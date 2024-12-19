@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.rach.firmmanagement.HomeScreen.ScreensManage
 import com.rach.firmmanagement.employee.AdvanceMoneyRequestScreen
+import com.rach.firmmanagement.employee.AllExpense
 import com.rach.firmmanagement.employee.EmployAttendance
 import com.rach.firmmanagement.employee.EmployeeHomeScreen
 import com.rach.firmmanagement.employee.LeaveRequestScreen
@@ -40,7 +41,8 @@ fun EmplNavigation() {
                 navigateToAdvanceMoney = { navController.navigate(ScreensManage.AdvanceMoney.route) },
                 navigateToPunchInPunchOut = {navController.navigate(ScreensManage.PunchInOut.route)},
                 navigateToEmployeeAttendence = {navController.navigate(ScreensManage.AttendanceSummary.route)},
-                navigateToRaiseExpense = { navController.navigate(ScreensManage.RaiseExpense.route) }
+                navigateToRaiseExpense = { navController.navigate(ScreensManage.RaiseExpense.route) },
+                navigateToAllExpense = { navController.navigate(ScreensManage.AllExpense.route) }
             )
         }
         
@@ -71,6 +73,9 @@ fun EmplNavigation() {
         }
         composable(ScreensManage.RaiseExpense.route){
             RaiseExpense(loginViewModel = loginViewModel)
+        }
+        composable(ScreensManage.AllExpense.route){
+            AllExpense(loginViewModel = loginViewModel)
         }
     }
 

@@ -1,5 +1,6 @@
 package com.rach.firmmanagement.viewModel
 
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,11 +8,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.rach.firmmanagement.dataClassImp.AdvanceMoneyData
 import com.rach.firmmanagement.dataClassImp.EmployeeSectionData
 import com.rach.firmmanagement.dataClassImp.Expense
+import com.rach.firmmanagement.dataClassImp.ExpenseItem
 import com.rach.firmmanagement.repository.EmployeeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -176,10 +179,10 @@ class EmployeeViewModel1 : ViewModel() {
         moneyRaise = newMoneyRaise
     }
 
-    var items: List<Pair<String, String>> by mutableStateOf(listOf())
+    var items: List<ExpenseItem> by mutableStateOf(listOf())
         private set
 
-    fun onItemsChange(newItems: List<Pair<String, String>>) {
+    fun onItemsChange(newItems: List<ExpenseItem>) {
         items = newItems
     }
 
@@ -209,7 +212,8 @@ class EmployeeViewModel1 : ViewModel() {
                     moneyRaise = moneyRaise,
                     items = items,
                     remaining = remaining,
-                    selectedDate = selectedDate
+                    selectedDate = selectedDate,
+                    employeeNumber = currentUserPhoneNumber
                 ),
                 onSuccess = {
                     _circularBarState.value = false
@@ -220,6 +224,59 @@ class EmployeeViewModel1 : ViewModel() {
                     onFailure()
                 }
             )
+        }
+    }
+
+    var expenses: List<Expense> by mutableStateOf(emptyList())
+        private set
+
+    var selectedYear: String by mutableStateOf("")
+        private set
+
+    fun onYearChange(newYear: String) {
+        selectedYear = newYear
+    }
+
+    var selectedMonth: String by mutableStateOf("")
+        private set
+
+    fun onMonthChange(newMonth: Int) {
+        // Get the month in "MMM" format (0-based month)
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.MONTH, newMonth)  // Set the calendar to the selected month
+        selectedMonth = SimpleDateFormat("MMM", Locale.getDefault()).format(calendar.time)  // Format month as "MMM"
+    }
+
+    var isLoading: Boolean by mutableStateOf(false)
+        private set
+
+    fun getExpensesForMonth(
+        adminPhoneNumber: String,
+        onSuccess: () -> Unit = {},
+        onFailure: () -> Unit = {}
+    ){
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                repository.getExpensesForMonth(
+                    adminPhoneNumber = adminPhoneNumber,
+                    year = selectedYear,
+                    month = selectedMonth,
+                    onSuccess = { fetchedExpenses ->
+                        expenses = fetchedExpenses
+                        onSuccess()
+                        Log.d("ExpensesData", "$fetchedExpenses")
+                    },
+                    onFailure = {
+                        onFailure()
+                    }
+                )
+            } catch (e: Exception) {
+                expenses = emptyList()
+                onFailure()
+            } finally {
+                isLoading = false
+            }
         }
     }
 

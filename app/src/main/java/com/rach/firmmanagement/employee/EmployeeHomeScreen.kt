@@ -70,7 +70,8 @@ fun EmployeeHomeScreen(
     navigateToAdvanceMoney: () -> Unit,
     navigateToPunchInPunchOut: () -> Unit,
     navigateToEmployeeAttendence: () -> Unit,
-    navigateToRaiseExpense: () -> Unit
+    navigateToRaiseExpense: () -> Unit,
+    navigateToAllExpense: () -> Unit
 ) {
 
     val progressState by viewmodel.progressBarState.collectAsState()
@@ -160,6 +161,13 @@ fun EmployeeHomeScreen(
                                 "Raise Expense",
                                 iconDrawable = painterResource(id=R.drawable.expense),
                                 onClick = { navigateToRaiseExpense() }
+                            )
+                        }
+                        item {
+                            OptionCard(
+                                "Expense Hist",
+                                iconDrawable = painterResource(id=R.drawable.expense_list_ic),
+                                onClick = { navigateToAllExpense() }
                             )
                         }
 
@@ -281,9 +289,11 @@ fun EmployeeHomeScreenPreview() {
             {},
             {},
             {},
-            {},{},{})
-
-
+            {},
+            {},
+            {},
+            {}
+        )
 
     }
 }

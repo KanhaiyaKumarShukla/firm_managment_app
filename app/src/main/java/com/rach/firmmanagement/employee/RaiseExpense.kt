@@ -2,6 +2,7 @@ package com.rach.firmmanagement.employee
 
 import android.app.DatePickerDialog
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.R
+import com.rach.firmmanagement.dataClassImp.ExpenseItem
 import com.rach.firmmanagement.notification.MyNotification
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
 import com.rach.firmmanagement.ui.theme.blueAcha
@@ -43,6 +45,7 @@ fun RaiseExpense(
     employeeViewModel: EmployeeViewModel1 = viewModel(),
     loginViewModel: LoginViewModel
 ) {
+
     // State for money raise input
     var moneyRaise by remember { mutableStateOf(employeeViewModel.moneyRaise) }
 
@@ -127,17 +130,17 @@ fun RaiseExpense(
         // Display existing items
         items.forEachIndexed { index, item ->
             Item(
-                name = item.first,
-                value = item.second,
+                name = item.name,
+                value = item.value,
                 onNameChange = { name ->
                     items = items.toMutableList().apply {
-                        this[index] = name to items[index].second
+                        this[index] = ExpenseItem(name = name, value = items[index].value)
                     }
                     employeeViewModel.onItemsChange(items)
                 },
                 onValueChange = { value ->
                     items = items.toMutableList().apply {
-                        this[index] = items[index].first to value
+                        this[index] = ExpenseItem(name = items[index].name, value = value)
                     }
                     employeeViewModel.onItemsChange(items)
                 },
@@ -183,7 +186,7 @@ fun RaiseExpense(
         ) {
             Button(onClick = {
                 // Add a new item
-                items = items + ("" to "")
+                items = items + ExpenseItem(name = "", value = "")
                 employeeViewModel.onItemsChange(items)
                 },
                 modifier = Modifier.width(120.dp),

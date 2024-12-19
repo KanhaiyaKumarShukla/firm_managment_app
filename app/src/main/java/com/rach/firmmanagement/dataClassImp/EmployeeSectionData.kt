@@ -45,7 +45,13 @@ data class EmployeeHomeScreenData(
 
 data class Expense(
     val moneyRaise: String,
-    val items: List<Pair<String, String>>,
+    val items: List<ExpenseItem>,
     val remaining: String,
-    val selectedDate: String
+    val selectedDate: String,
+    val employeeNumber:String
+)
+
+data class ExpenseItem(
+    val name:String,
+    val value:String
 )

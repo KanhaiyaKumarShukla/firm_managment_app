@@ -16,5 +16,6 @@ sealed class ScreensManage(val route:String) {
     object goToTask:ScreensManage("GoToTask")
     object PunchInOut:ScreensManage("PunchInPunchOut")
     object AttendanceSummary:ScreensManage("Attendence Summary")
+    object AllExpense: ScreensManage("All Expense")
 
 }
