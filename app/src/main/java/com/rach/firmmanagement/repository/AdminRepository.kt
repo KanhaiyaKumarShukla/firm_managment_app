@@ -7,6 +7,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.AddWorkingHourDataClass
+import com.rach.firmmanagement.dataClassImp.Expense
+import com.rach.firmmanagement.dataClassImp.ExpenseItem
 import com.rach.firmmanagement.dataClassImp.HolidayAndHoursDataClass
 import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
@@ -292,6 +294,66 @@ class AdminRepository {
         } catch (e: Exception) {
             Log.e("TAG", "Failed to fetch remarks: ${e.message}")
             emptyList()
+        }
+    }
+
+    suspend fun getExpensesForMonth(
+        adminPhoneNumber: String,
+        employeeNumber:String,
+        year: String,
+        month: String,
+        onSuccess: (List<Expense>) -> Unit,
+        onFailure: () -> Unit
+    ) {
+        try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+
+            val monthDocRef = database.collection("Members")
+                .document(updateAdminNumber)
+                .collection("Employee")
+                .document(employeeNumber)
+                .collection("Expense")
+                .document(year)
+                .collection(month)
+            Log.d("ExpensesData", "$updateAdminNumber, $employeeNumber, $year, $month, ${monthDocRef.path}")
+
+            val dateDocuments = monthDocRef.get().await()
+            val allExpenses = mutableListOf<Expense>()
+
+            Log.d("ExpensesData", dateDocuments.size().toString())
+            for (dateDoc in dateDocuments.documents) {
+                Log.d("ExpensesData", dateDoc.data.toString())
+                val entries = dateDoc.reference.collection("Entries").get().await()
+                Log.d("ExpensesData", "${entries.documents}, ${entries.isEmpty}, ${entries.metadata}")
+                val expenses = entries.documents.mapNotNull { entryDoc ->
+                    val data = entryDoc.data
+                    if (data != null) {
+                        Expense(
+                            employeeNumber = data["employeeNumber"] as? String ?: "",
+                            items = (data["items"] as? List<Map<String, Any>>)?.map {
+                                ExpenseItem(
+                                    name = it["name"] as? String ?: "",
+                                    value = it["value"] as? String ?: ""
+                                )
+                            } ?: emptyList(),
+                            moneyRaise = data["moneyRaise"] as? String ?: "",
+                            remaining = data["remaining"] as? String ?: "",
+                            selectedDate = data["selectedDate"] as? String ?: ""
+                        )
+                    }else null
+                }
+                allExpenses.addAll(expenses)
+            }
+            Log.d("ExpensesData", "All Expenses: $allExpenses")
+            onSuccess(allExpenses)
+
+        } catch (e: Exception) {
+            Log.d("ExpensesData", "Error in getExpensesForMonth: ${e.message}")
+            onFailure()
         }
     }
 

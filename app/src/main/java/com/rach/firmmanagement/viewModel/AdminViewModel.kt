@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
+import com.rach.firmmanagement.dataClassImp.Expense
 import com.rach.firmmanagement.dataClassImp.HolidayAndHoursDataClass
 import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.repository.AdminRepository
@@ -271,6 +272,33 @@ class AdminViewModel : ViewModel() {
             taskId = taskId,
             isCommon = isCommon,
         )
+
+    }
+
+    private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
+    val expenses: StateFlow<List<Expense>> = _expenses
+    private val _loadingExpenses = MutableStateFlow(false)
+    val loadingExpenses: StateFlow<Boolean> = _loadingExpenses
+
+    fun getExpensesForMonth(
+        employeeNumber:String,
+        year: String,
+        month: String
+    ) {
+        viewModelScope.launch {
+            repository.getExpensesForMonth(
+                adminPhoneNumber = adminPhoneNumber,
+                employeeNumber = employeeNumber,
+                year = year,
+                month = month,
+                onSuccess = { expenses ->
+                    _expenses.value = expenses
+                },
+                onFailure = {
+                    _expenses.value = emptyList() // Handle failure case
+                }
+            )
+        }
 
     }
 

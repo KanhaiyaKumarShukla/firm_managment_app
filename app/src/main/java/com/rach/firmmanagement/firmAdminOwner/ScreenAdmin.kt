@@ -11,5 +11,6 @@ sealed class ScreenAdmin(val route: String) {
     object ViewAllTask : ScreenAdmin("ViewAllTask")
     object EmployeeAttendance:ScreenAdmin("Employee Attended")
     object AddTask :ScreenAdmin("Add task")
+    object AllExpenses: ScreenAdmin("All Expenses")
 
 }

@@ -13,10 +13,12 @@ import com.rach.firmmanagement.firmAdminOwner.AddStaff
 import com.rach.firmmanagement.firmAdminOwner.AddTask
 import com.rach.firmmanagement.firmAdminOwner.AddWorkHoursScreen
 import com.rach.firmmanagement.firmAdminOwner.AllEmployeeAttendance
+import com.rach.firmmanagement.firmAdminOwner.Expense
 import com.rach.firmmanagement.firmAdminOwner.HolidayAddScreen
 import com.rach.firmmanagement.firmAdminOwner.ScreenAdmin
 import com.rach.firmmanagement.firmAdminOwner.ViewAllEmployee
 import com.rach.firmmanagement.firmAdminOwner.ViewAllTask
+import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.EmlAllTask
 
@@ -26,6 +28,7 @@ fun Navigation2(){
 
     val navController = rememberNavController()
     val emViewModel : AllEmployeeViewModel = viewModel()
+    val adminViewModel:AdminViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = ScreenAdmin.AdminPanel.route) {
 
@@ -37,7 +40,8 @@ fun Navigation2(){
                navigateToViewEmpl = { navController.navigate(ScreenAdmin.ViewEmployee.route) },
                navigateToViewAllTask = { navController.navigate(ScreenAdmin.ViewAllTask.route) },
                navigateToTask = {navController.navigate(ScreenAdmin.AddTask.route)},
-               navigateToEmployeeAttendance={navController.navigate(ScreenAdmin.EmployeeAttendance.route)}
+               navigateToEmployeeAttendance={navController.navigate(ScreenAdmin.EmployeeAttendance.route)},
+               navigateToAllExpense={navController.navigate(ScreenAdmin.AllExpenses.route)}
            )
         }
 
@@ -67,6 +71,10 @@ fun Navigation2(){
         }
         composable(ScreenAdmin.EmployeeAttendance.route){
             AllEmployeeAttendance(employeeViewModel=emViewModel)
+        }
+
+        composable(ScreenAdmin.AllExpenses.route){
+            Expense(viewModel=adminViewModel)
         }
 
     }

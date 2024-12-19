@@ -344,7 +344,8 @@ fun AdminPanelScreen(
     navigateToViewEmpl: () -> Unit,
     navigateToViewAllTask: () -> Unit,
     navigateToTask: () -> Unit,
-    navigateToEmployeeAttendance: () -> Unit
+    navigateToEmployeeAttendance: () -> Unit,
+    navigateToAllExpense: () -> Unit
 
 ) {
 
@@ -425,6 +426,13 @@ fun AdminPanelScreen(
                 description = "See Employee Attendance",
                 drawableRes = R.drawable.baseline_account_circle_24,  // Settings icon for app settings
                 onClick = { navigateToEmployeeAttendance() }
+            )
+
+            OptionCard(
+                title = "All Expenses",
+                description = "See Expenses",
+                drawableRes = R.drawable.expense_list_ic,  // Settings icon for app settings
+                onClick = { navigateToAllExpense() }
             )
         }
 
@@ -511,7 +519,7 @@ fun OptionCard(
 @Composable
 fun NoDij() {
     FirmManagementTheme {
-        AdminPanelScreen({}, {}, {}, {}, {}, {}, {})
+        AdminPanelScreen({}, {}, {}, {}, {}, {}, {}, {})
     }
 }
 
