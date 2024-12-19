@@ -5,11 +5,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.EmployeeHomeScreenData
 import com.rach.firmmanagement.dataClassImp.LocationData
 import com.rach.firmmanagement.dataClassImp.OutForWork
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
+import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.repository.EmployeeRepository
 import com.rach.firmmanagement.repository.NoAdminRepository
 import com.rach.firmmanagement.repository.PunchInPunchOutRepository
@@ -24,12 +26,21 @@ class EmlAllTask(
     private val repository: EmployeeRepository = EmployeeRepository()
 ) : ViewModel() {
 
-    var employeeList = mutableStateOf<List<AddTaskDataClass>>(emptyList())
+    var taskList = mutableStateOf<List<AddTaskDataClass>>(emptyList())
         private set
 
     var isLoading = mutableStateOf(false)
         private set
 
+    val database = FirebaseFirestore.getInstance()
+    val currentUserNumber = FirebaseAuth.getInstance().currentUser?.phoneNumber.toString()
+
+
+    val employeeNumber = when {
+        currentUserNumber.startsWith("+91") -> currentUserNumber.removePrefix("+91")
+        else ->
+            currentUserNumber
+    }
 
     fun loadAllTask(
         adminPhoneNumber: String
@@ -38,16 +49,58 @@ class EmlAllTask(
             isLoading.value = true
             repository.loadTask(
                 adminPhoneNumber = adminPhoneNumber,
-                onSuccess = { employee ->
-                    employeeList.value = employee
+                onSuccess = { task ->
+                    taskList.value = task
                     isLoading.value = false
 
                 },
                 onFailure = {
+                    taskList.value = emptyList()
                     isLoading.value = false
                 }
             )
         }
+    }
+
+    fun addRemark(
+        adminPhoneNumber: String,
+        taskId: String,
+        isCommon: Boolean,
+        employeePhone: String = "",
+        newRemark: String,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        viewModelScope.launch {
+            repository.addRemark(
+                adminPhoneNumber = adminPhoneNumber,
+                employeePhone = employeePhone,
+                taskId = taskId,
+                isCommon = isCommon,
+                newRemark = Remark(
+                    person = employeeNumber,
+                    message = newRemark,
+                    date = currentDate
+                ),
+                onSuccess = onSuccess,
+                onFailure = onFailure
+            )
+        }
+    }
+
+    suspend fun fetchRemarks(
+        adminPhoneNumber: String,
+        taskId: String,
+        isCommon: Boolean,
+
+        ) : List<Remark> {
+        return repository.fetchRemarks(
+            adminPhoneNumber = adminPhoneNumber,
+            employeePhone = employeeNumber,
+            taskId = taskId,
+            isCommon = isCommon,
+        )
+
     }
 
     //Location

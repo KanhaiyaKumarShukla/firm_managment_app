@@ -5,11 +5,14 @@ import android.text.TextPaint
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 //noinspection UsingMaterialAndMaterial3Libraries
@@ -253,6 +256,7 @@ fun PunchInOutAttendance(
             }
         }
     }
+    /*
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -344,6 +348,110 @@ fun PunchInOutAttendance(
 
 
     }
+
+     */
+
+    val horizontalScrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        // Horizontal Scrollable Box
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(horizontalScrollState) // Enable horizontal scrolling
+        ) {
+            Column {
+                // Header Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    val headers = if (selectGenderState == "Employee") {
+                        listOf("Date", "Punch-In", "Punch-Out", "Location")
+                    } else {
+                        listOf("Name", "Punch-In", "Punch-Out", "Location")
+                    }
+
+                    headers.forEachIndexed { index, title ->
+                        Text(
+                            text = title,
+                            modifier = Modifier
+                                .width(if (index == 3) 150.dp else 100.dp) // Explicit widths
+                                .padding(8.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                val attendanceData = if (selectGenderState == "Employee") {
+                    emlAllTask.attendanceDetails.collectAsState()
+                } else {
+                    allEmployeeViewModel.punchInOutAttendanceDetails.collectAsState()
+                }
+
+                val details = attendanceData.value ?: emptyList()
+
+                // Content Rows
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    items(details) { detail ->
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            if (selectGenderState == "Employee") {
+                                Text(
+                                    text = detail.date ?: "N/A",
+                                    modifier = Modifier
+                                        .width(100.dp) // Match header width
+                                        .padding(8.dp),
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            } else {
+                                Text(
+                                    text = detail.name ?: "N/A",
+                                    modifier = Modifier
+                                        .width(100.dp) // Match header width
+                                        .padding(8.dp),
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Text(
+                                text = detail.punchTime ?: "N/A",
+                                modifier = Modifier
+                                    .width(100.dp) // Match header width
+                                    .padding(8.dp),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = detail.punchOutTime ?: "N/A",
+                                modifier = Modifier
+                                    .width(100.dp) // Match header width
+                                    .padding(8.dp),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = detail.locationPunchTime ?: "N/A",
+                                modifier = Modifier
+                                    .width(150.dp) // Wider column for "Location"
+                                    .padding(8.dp),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
 }
 

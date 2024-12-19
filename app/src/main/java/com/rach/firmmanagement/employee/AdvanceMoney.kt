@@ -19,6 +19,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.notification.MyNotification
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
+import com.rach.firmmanagement.ui.theme.blueAcha
+import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.ui.theme.progressBarBgColor
 import com.rach.firmmanagement.viewModel.EmployeeViewModel1
 import com.rach.firmmanagement.viewModel.LoginViewModel
@@ -113,13 +115,18 @@ fun AdvanceMoneyRequestScreen(
                               }
                           }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
+                modifier = Modifier.width(120.dp),
+                colors = ButtonDefaults.buttonColors(
+                    blueAcha
+                )
             ) {
-                Text(text = "Submit", fontSize = 18.sp, color = Color.White)
+
+                Text(
+                    text = "Submit",
+                    color = Color.White,
+                    style = fontBablooBold
+                )
+
             }
         }
 

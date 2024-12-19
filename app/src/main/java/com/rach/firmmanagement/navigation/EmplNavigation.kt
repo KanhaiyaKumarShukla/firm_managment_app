@@ -11,6 +11,7 @@ import com.rach.firmmanagement.employee.EmployAttendance
 import com.rach.firmmanagement.employee.EmployeeHomeScreen
 import com.rach.firmmanagement.employee.LeaveRequestScreen
 import com.rach.firmmanagement.employee.PunchInOutApp
+import com.rach.firmmanagement.employee.RaiseExpense
 import com.rach.firmmanagement.employee.SeeTasks
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.EmlAllTask
@@ -38,7 +39,9 @@ fun EmplNavigation() {
                 navigateToRaiseLeave = { navController.navigate(ScreensManage.RaiseAHoliday.route) },
                 navigateToAdvanceMoney = { navController.navigate(ScreensManage.AdvanceMoney.route) },
                 navigateToPunchInPunchOut = {navController.navigate(ScreensManage.PunchInOut.route)},
-                navigateToEmployeeAttendence = {navController.navigate(ScreensManage.AttendanceSummary.route)})
+                navigateToEmployeeAttendence = {navController.navigate(ScreensManage.AttendanceSummary.route)},
+                navigateToRaiseExpense = { navController.navigate(ScreensManage.RaiseExpense.route) }
+            )
         }
         
         composable(ScreensManage.goToTask.route){
@@ -65,6 +68,9 @@ fun EmplNavigation() {
         
         composable(ScreensManage.AttendanceSummary.route){
             EmployAttendance(loginViewModel = loginViewModel, employeeViewModel = employeename)
+        }
+        composable(ScreensManage.RaiseExpense.route){
+            RaiseExpense()
         }
     }
 

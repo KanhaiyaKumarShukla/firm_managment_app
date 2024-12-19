@@ -131,7 +131,7 @@ class AllEmployeeViewModel(
 
              */
 
-            val taskData= AddTaskDataClass(task=task, date = _registrationDate.value)
+            val taskData= AddTaskDataClass(task=task, date = _registrationDate.value, isCommon = false, id = taskRef.id)
 
             taskRef.set(taskData)
                 .addOnSuccessListener {

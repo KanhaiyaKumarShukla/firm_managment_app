@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Text
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +31,8 @@ import androidx.core.app.ActivityCompat
 import com.rach.firmmanagement.HomeScreen.EditDialog
 import com.rach.firmmanagement.MainActivity
 import com.rach.firmmanagement.notification.NotificationUtils
+import com.rach.firmmanagement.ui.theme.blueAcha
+import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.ui.theme.progressBarBgColor
 import com.rach.firmmanagement.viewModel.EmlAllTask
 import com.rach.firmmanagement.viewModel.LoginViewModel
@@ -318,13 +321,18 @@ fun OutOfWorkPortion(
                     )
                 }
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
+            modifier = Modifier.width(120.dp),
+            colors = ButtonDefaults.buttonColors(
+                blueAcha
+            )
         ) {
-            Text(text = "Save", fontSize = 18.sp, color = Color.White)
+
+            Text(
+                text = "Save",
+                color = Color.White,
+                style = fontBablooBold
+            )
+
         }
     }
 }
@@ -346,16 +354,20 @@ fun ViewHistorySection(navigateToEmployeeAttendence: () -> Unit) {
 
         Button(
             onClick = {
-            /* Navigate to History Screen */
+                /* Navigate to History Screen */
                 navigateToEmployeeAttendence()
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
+            colors = ButtonDefaults.buttonColors(
+                blueAcha
+            )
         ) {
-            Text("View History", fontSize = 18.sp, color = Color.White)
+
+            Text(
+                text = "View History",
+                color = Color.White,
+                style = fontBablooBold
+            )
+
         }
     }
 }

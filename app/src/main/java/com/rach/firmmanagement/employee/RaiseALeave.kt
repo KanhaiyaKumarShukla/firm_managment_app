@@ -9,6 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +26,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.R
 import com.rach.firmmanagement.notification.MyNotification
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
+import com.rach.firmmanagement.ui.theme.blueAcha
+import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.ui.theme.progressBarBgColor
 import com.rach.firmmanagement.viewModel.EmployeeViewModel1
 import com.rach.firmmanagement.viewModel.LoginViewModel
@@ -205,13 +209,18 @@ fun LeaveRequestScreen(
                         }
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
+                modifier = Modifier.width(120.dp),
+                colors = ButtonDefaults.buttonColors(
+                    blueAcha
+                )
             ) {
-                Text(text = "Submit", fontSize = 18.sp, color = Color.White)
+
+                Text(
+                    text = "Submit",
+                    color = Color.White,
+                    style = fontBablooBold
+                )
+
             }
         }
 

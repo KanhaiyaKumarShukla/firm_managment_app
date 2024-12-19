@@ -42,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.R
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
+import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.ui.theme.fontPoppinsMedium
 import com.rach.firmmanagement.viewModel.EmlAllTask
@@ -67,7 +69,8 @@ fun EmployeeHomeScreen(
     navigateToRaiseLeave: () -> Unit,
     navigateToAdvanceMoney: () -> Unit,
     navigateToPunchInPunchOut: () -> Unit,
-    navigateToEmployeeAttendence: () -> Unit
+    navigateToEmployeeAttendence: () -> Unit,
+    navigateToRaiseExpense: () -> Unit
 ) {
 
     val progressState by viewmodel.progressBarState.collectAsState()
@@ -128,18 +131,18 @@ fun EmployeeHomeScreen(
                     contentPadding = PaddingValues(16.dp),
                     content = {
                         item {
-                            OptionCard("Punch In/Out", Icons.Default.Check,
+                            OptionCard("Punch In/Out", iconVector =Icons.Default.Check,
                                 onClick = {
 
                                     navigateToPunchInPunchOut()
                                 })
                         }
                         item {
-                            OptionCard("Raise Leave", Icons.Default.Call,
+                            OptionCard("Raise Leave", iconVector =Icons.Default.Call,
                                 onClick = { navigateToRaiseLeave() })
                         }
                         item {
-                            OptionCard("Attendance History", Icons.Default.DateRange,
+                            OptionCard("Attendance History", iconVector =Icons.Default.DateRange,
                                 onClick = { navigateToEmployeeAttendence() })
                         }
                         item {
@@ -149,9 +152,17 @@ fun EmployeeHomeScreen(
                                 onClick = { navigateToSeeTask() })
                         }
                         item {
-                            OptionCard("Raise Advance Money", Icons.Default.Info,
+                            OptionCard("Raise Adv Money", iconVector =  Icons.Default.Info,
                                 onClick = { navigateToAdvanceMoney() })
                         }
+                        item {
+                            OptionCard(
+                                "Raise Expense",
+                                iconDrawable = painterResource(id=R.drawable.expense),
+                                onClick = { navigateToRaiseExpense() }
+                            )
+                        }
+
                     }
                 )
             }
@@ -179,7 +190,7 @@ fun WelcomeSection(userName: String, role: String, joiningDate: String) {
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .border(2.dp, MaterialTheme.colors.primary, CircleShape)
+                .border(2.dp, blueAcha, CircleShape)
         )
         Spacer(modifier = Modifier.width(16.dp))
         // Welcome Text
@@ -195,10 +206,10 @@ fun WelcomeSection(userName: String, role: String, joiningDate: String) {
             Text(
                 text = userName,
                 style = fontPoppinsMedium,
-                color = MaterialTheme.colors.primary
+                color = blueAcha
             )
 
-            Text(text = "Joining Date $joiningDate")
+            Text(text = "Joining Date: $joiningDate")
 
         }
     }
@@ -206,7 +217,9 @@ fun WelcomeSection(userName: String, role: String, joiningDate: String) {
 
 @Composable
 fun OptionCard(
-    optionName: String, icon: ImageVector,
+    optionName: String,
+    iconVector: ImageVector?=null,
+    iconDrawable: Painter? = null,
     onClick: () -> Unit = {}
 ) {
     Column(
@@ -230,12 +243,22 @@ fun OptionCard(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = optionName,
-                    tint = MaterialTheme.colors.primary,
-                    modifier = Modifier.size(48.dp)
-                )
+                if (iconVector != null) {
+                    // Display vector icon
+                    Icon(
+                        imageVector = iconVector,
+                        contentDescription = optionName,
+                        tint = blueAcha,
+                        modifier = Modifier.size(48.dp)
+                    )
+                } else if (iconDrawable != null) {
+                    // Display drawable or PNG icon
+                    Image(
+                        painter = iconDrawable,
+                        contentDescription = optionName,
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = optionName,
@@ -258,7 +281,7 @@ fun EmployeeHomeScreenPreview() {
             {},
             {},
             {},
-            {},{})
+            {},{},{})
 
 
 

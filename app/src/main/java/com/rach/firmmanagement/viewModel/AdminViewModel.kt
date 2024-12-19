@@ -6,6 +6,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.HolidayAndHoursDataClass
+import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -231,6 +232,46 @@ class AdminViewModel : ViewModel() {
                 // Handle error if needed
             }
         }
+    }
+
+    fun addRemark(
+        taskId: String,
+        isCommon: Boolean,
+        employeePhone: String = "",
+        newRemark: String,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        viewModelScope.launch {
+            repository.addRemark(
+                adminPhoneNumber = adminPhoneNumber,
+                employeePhone = employeePhone,
+                taskId = taskId,
+                isCommon = isCommon,
+                newRemark = Remark(
+                    person = adminPhoneNumber,
+                    message = newRemark,
+                    date = currentDate
+                ),
+                onSuccess = onSuccess,
+                onFailure = onFailure
+            )
+        }
+    }
+
+    suspend fun fetchRemarks(
+        taskId: String,
+        isCommon: Boolean,
+        employeePhone: String = "",
+
+    ) : List<Remark> {
+        return repository.fetchRemarks(
+            adminPhoneNumber = adminPhoneNumber,
+            employeePhone = employeePhone,
+            taskId = taskId,
+            isCommon = isCommon,
+        )
+
     }
 
 

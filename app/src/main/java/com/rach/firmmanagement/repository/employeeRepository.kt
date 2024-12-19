@@ -1,5 +1,6 @@
 package com.rach.firmmanagement.repository
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
@@ -7,6 +8,7 @@ import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.AdvanceMoneyData
 import com.rach.firmmanagement.dataClassImp.EmployeeSectionData
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
+import com.rach.firmmanagement.dataClassImp.Remark
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -107,13 +109,10 @@ class EmployeeRepository(
                 .await()
 
             if (!commonTaskData.isEmpty) {
-                val commonTaskList = commonTaskData.documents.map { document ->
-                    AddTaskDataClass(
-                        date = document.getString("date"),
-                        task = document.getString("task")
-                    )
+                val commonTasks = commonTaskData.documents.mapNotNull { document ->
+                    document.toObject(AddTaskDataClass::class.java)?.copy(id = document.id)
                 }
-                combinedTaskList.addAll(commonTaskList)
+                combinedTaskList.addAll(commonTasks)
             }
 
             // Fetch employee-specific tasks
@@ -144,6 +143,90 @@ class EmployeeRepository(
         }
     }
 
+    suspend fun addRemark(
+        adminPhoneNumber: String,
+        employeePhone: String, // Required for non-common tasks
+        taskId: String,
+        isCommon: Boolean,
+        newRemark: Remark,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        try {
+            val taskRef = if (isCommon) {
+                // Path for common tasks
+                database.collection("Members")
+                    .document(adminPhoneNumber)
+                    .collection("Tasks")
+                    .document(taskId)
+            } else {
+                // Path for employee-specific tasks
+                database.collection("Members")
+                    .document(adminPhoneNumber)
+                    .collection("Employee")
+                    .document(employeePhone)
+                    .collection("tasks")
+                    .document(taskId)
+            }
+
+            // Fetch the current task data
+            val snapshot = taskRef.get().await()
+            val taskData = snapshot.toObject(AddTaskDataClass::class.java)
+
+            // Append the new remark to the existing list
+            val updatedRemarks = taskData?.remarks?.toMutableList() ?: mutableListOf()
+            updatedRemarks.add(newRemark)
+
+            // Update Firestore with the new remarks list
+            taskRef.update("remarks", updatedRemarks).await()
+
+            onSuccess()
+        } catch (e: Exception) {
+            onFailure()
+        }
+    }
+
+    suspend fun fetchRemarks(
+        adminPhoneNumber: String,
+        isCommon: Boolean,
+        taskId: String,
+        employeePhone:String,
+    ): List<Remark> {
+        return try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+            val taskRef = if (isCommon) {
+                // Path for common tasks
+                database.collection("Members")
+                    .document(updateAdminNumber)
+                    .collection("Tasks")
+                    .document(taskId)
+            } else {
+                // Path for employee-specific tasks
+                database.collection("Members")
+                    .document(updateAdminNumber)
+                    .collection("Employee")
+                    .document(employeePhone)
+                    .collection("tasks")
+                    .document(taskId)
+            }
+            // Fetch the current task data from Firestore
+            val snapshot = taskRef.get().await()
+            val taskData = snapshot.toObject(AddTaskDataClass::class.java)
+
+            // Extract remarks from the fetched task data
+            val remarks = taskData?.remarks ?: emptyList()
+            Log.d("TAG", "fetched successful")
+            remarks
+
+        } catch (e: Exception) {
+            Log.e("TAG", "Failed to fetch remarks: ${e.message}")
+            emptyList()
+        }
+    }
 
 
     suspend fun punchInPunchOutEmplo(

@@ -1,5 +1,6 @@
 package com.rach.firmmanagement.repository
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -7,6 +8,7 @@ import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.AddWorkingHourDataClass
 import com.rach.firmmanagement.dataClassImp.HolidayAndHoursDataClass
+import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import kotlinx.coroutines.tasks.await
 import okhttp3.internal.wait
@@ -73,7 +75,7 @@ class AdminRepository {
 
 
     }
-
+    /*
     suspend fun addTask(
         addTaskDataClass: AddTaskDataClass,
         adminPhoneNumber: String,
@@ -99,6 +101,34 @@ class AdminRepository {
 
         }
 
+    }
+    */
+    suspend fun addTask(
+        addTaskDataClass: AddTaskDataClass,
+        adminPhoneNumber: String,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        try {
+            // Reference to the document with a generated ID
+            val taskRef = database.collection("Members")
+                .document(adminPhoneNumber)
+                .collection("Tasks")
+                .document() // Generate a unique document ID
+
+            val taskId = taskRef.id // Retrieve the generated task ID
+
+            // Create a copy of the data class with the task ID
+            val updatedTaskData = addTaskDataClass.copy(id = taskId, remarks = emptyList(), isCommon = true)
+
+            // Upload the data with the generated task ID
+            taskRef.set(updatedTaskData).await()
+
+            onSuccess()
+
+        } catch (e: Exception) {
+            onFailure()
+        }
     }
 
     suspend fun addWorkingHour(
@@ -145,12 +175,10 @@ class AdminRepository {
             .await()
 
         if (!commonTaskData.isEmpty) {
-            taskList.addAll(commonTaskData.documents.map { document ->
-                AddTaskDataClass(
-                    date = document.getString("date"),
-                    task = document.getString("task")
-                )
-            })
+            val commonTasks = commonTaskData.documents.mapNotNull { document ->
+                document.toObject(AddTaskDataClass::class.java)?.copy(id = document.id)
+            }
+            taskList.addAll(commonTasks)
         }
         return taskList
     }
@@ -172,6 +200,98 @@ class AdminRepository {
 
         for (document in documentsToDelete.documents) {
             document.reference.delete().await()
+        }
+    }
+
+    suspend fun addRemark(
+        adminPhoneNumber: String,
+        employeePhone: String="", // Required for non-common tasks
+        taskId: String,
+        isCommon: Boolean,
+        newRemark: Remark,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+            val taskRef = if (isCommon) {
+                // Path for common tasks
+                database.collection("Members")
+                    .document(updateAdminNumber)
+                    .collection("Tasks")
+                    .document(taskId)
+            } else {
+                // Path for employee-specific tasks
+                database.collection("Members")
+                    .document(updateAdminNumber)
+                    .collection("Employee")
+                    .document(employeePhone)
+                    .collection("tasks")
+                    .document(taskId)
+            }
+
+            Log.d("TAG","$taskId, $isCommon, $employeePhone, $taskRef, $adminPhoneNumber")
+
+            // Fetch the current task data
+            val snapshot = taskRef.get().await()
+            val taskData = snapshot.toObject(AddTaskDataClass::class.java)
+
+            // Append the new remark to the existing list
+            val updatedRemarks = taskData?.remarks?.toMutableList() ?: mutableListOf()
+            updatedRemarks.add(newRemark)
+
+            // Update Firestore with the new remarks list
+            taskRef.update("remarks", updatedRemarks).await()
+
+            onSuccess()
+        } catch (e: Exception) {
+            onFailure()
+        }
+    }
+
+    suspend fun fetchRemarks(
+        adminPhoneNumber: String,
+        isCommon: Boolean,
+        taskId: String,
+        employeePhone:String,
+    ): List<Remark> {
+        return try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+            val taskRef = if (isCommon) {
+                // Path for common tasks
+                database.collection("Members")
+                    .document(updateAdminNumber)
+                    .collection("Tasks")
+                    .document(taskId)
+            } else {
+                // Path for employee-specific tasks
+                database.collection("Members")
+                    .document(updateAdminNumber)
+                    .collection("Employee")
+                    .document(employeePhone)
+                    .collection("tasks")
+                    .document(taskId)
+            }
+            // Fetch the current task data from Firestore
+            val snapshot = taskRef.get().await()
+            val taskData = snapshot.toObject(AddTaskDataClass::class.java)
+
+            // Extract remarks from the fetched task data
+            val remarks = taskData?.remarks ?: emptyList()
+            Log.d("TAG", "fetched successful")
+            remarks
+
+        } catch (e: Exception) {
+            Log.e("TAG", "Failed to fetch remarks: ${e.message}")
+            emptyList()
         }
     }
 
