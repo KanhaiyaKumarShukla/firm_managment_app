@@ -1,12 +1,16 @@
 package com.rach.firmmanagement.repository
 
+import android.annotation.SuppressLint
+import android.icu.util.Calendar
 import android.util.Log
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.AdvanceMoneyData
 import com.rach.firmmanagement.dataClassImp.EmployeeSectionData
+import com.rach.firmmanagement.dataClassImp.Expense
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import com.rach.firmmanagement.dataClassImp.Remark
 import kotlinx.coroutines.tasks.await
@@ -262,7 +266,69 @@ class EmployeeRepository(
 
     }
 
+    private val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    private val currentMonth =
+        SimpleDateFormat("MMM", Locale.getDefault()).format(Calendar.getInstance().time)
+
+    @SuppressLint("NewApi")
+    private val todayDate = date.replace('/', '-')
+
+    private val tag="TAG"
+    suspend fun raiseExpense(
+        adminPhoneNumber: String,
+        expense: Expense,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ){
+        try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+            val yearRef=database.collection("Members")
+                .document(updateAdminNumber)
+                .collection("Employee")
+                .document(employeeNumber)
+                .collection("Expense")
+                .document("$currentYear")
+            val monthDocRef = yearRef.collection(currentMonth).document(todayDate) // Assuming `todayDate` is unique per day
+
+            Log.d(tag, "Employee: $employeeNumber, Admin: $adminPhoneNumber")
+            // Ensure year and month documents exist
+            yearRef.set(mapOf("created" to true)) // Placeholder field for the year document
+                .addOnSuccessListener {
+                    Log.d(tag, "Year document $currentYear created successfully.")
+
+                    monthDocRef.set(mapOf("created" to true)) // Placeholder field for the month document
+                        .addOnSuccessListener {
+                            Log.d(tag, "Month document $currentMonth created successfully.")
+
+                            // Now add the subcollection data
+                            val collectionRef = monthDocRef.collection("Entries")
+                            collectionRef.document(Timestamp.now().seconds.toString()).set(expense)
+                                .addOnSuccessListener {
+                                    onSuccess()
+                                    Log.d(tag, "added successfully!")
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.d(tag, "Error adding document: ${e.message}")
+                                    onFailure()
+                                }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.d(tag, "Error creating month document: ${e.message}")
+                        }
+                }
+                .addOnFailureListener { e ->
+                    Log.d(tag, "Error creating year document: ${e.message}")
+                }
 
 
+        }catch (e:Exception){
+            Log.d(tag, "Failed to punchIn- ${e.message}")
+            onFailure()
+        }
+    }
 
 }

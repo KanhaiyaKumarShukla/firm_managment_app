@@ -70,7 +70,7 @@ fun EmplNavigation() {
             EmployAttendance(loginViewModel = loginViewModel, employeeViewModel = employeename)
         }
         composable(ScreensManage.RaiseExpense.route){
-            RaiseExpense()
+            RaiseExpense(loginViewModel = loginViewModel)
         }
     }
 

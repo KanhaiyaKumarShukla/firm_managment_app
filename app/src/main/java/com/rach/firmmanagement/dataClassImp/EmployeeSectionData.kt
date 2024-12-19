@@ -42,3 +42,10 @@ data class EmployeeHomeScreenData(
     val role:String? ="",
     val registrationDate: String? =""
 )
+
+data class Expense(
+    val moneyRaise: String,
+    val items: List<Pair<String, String>>,
+    val remaining: String,
+    val selectedDate: String
+)

@@ -1,10 +1,12 @@
 package com.rach.firmmanagement.viewModel
 
+import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.rach.firmmanagement.dataClassImp.AdvanceMoneyData
 import com.rach.firmmanagement.dataClassImp.EmployeeSectionData
+import com.rach.firmmanagement.dataClassImp.Expense
 import com.rach.firmmanagement.repository.EmployeeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -163,6 +165,62 @@ class EmployeeViewModel1 : ViewModel() {
         }
 
 
+    }
+
+
+
+    var moneyRaise: String by mutableStateOf("")
+        private set
+
+    fun onMoneyRaiseChange(newMoneyRaise: String) {
+        moneyRaise = newMoneyRaise
+    }
+
+    var items: List<Pair<String, String>> by mutableStateOf(listOf())
+        private set
+
+    fun onItemsChange(newItems: List<Pair<String, String>>) {
+        items = newItems
+    }
+
+    var remaining: String by mutableStateOf("")
+        private set
+
+    fun onRemainingChange(newRemaining: String) {
+        remaining = newRemaining
+    }
+
+    var selectedDate: String by mutableStateOf("")
+        private set
+    fun onDateChange(newDate: String) {
+        selectedDate = newDate
+    }
+
+    fun raiseExpense(
+        adminPhoneNumber: String,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ){
+        viewModelScope.launch {
+            _circularBarState.value = true
+            repository.raiseExpense(
+                adminPhoneNumber = adminPhoneNumber,
+                expense= Expense(
+                    moneyRaise = moneyRaise,
+                    items = items,
+                    remaining = remaining,
+                    selectedDate = selectedDate
+                ),
+                onSuccess = {
+                    _circularBarState.value = false
+                    onSuccess()
+                },
+                onFailure = {
+                    _circularBarState.value = false
+                    onFailure()
+                }
+            )
+        }
     }
 
 

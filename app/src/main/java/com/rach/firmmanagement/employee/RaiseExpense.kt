@@ -8,6 +8,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.*
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,27 +24,38 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.R
+import com.rach.firmmanagement.notification.MyNotification
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
 import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.ui.theme.fontBablooBold
+import com.rach.firmmanagement.viewModel.EmployeeViewModel1
+import com.rach.firmmanagement.viewModel.LoginViewModel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RaiseExpense() {
+fun RaiseExpense(
+    employeeViewModel: EmployeeViewModel1 = viewModel(),
+    loginViewModel: LoginViewModel
+) {
     // State for money raise input
-    var moneyRaise by remember { mutableStateOf("") }
+    var moneyRaise by remember { mutableStateOf(employeeViewModel.moneyRaise) }
 
     // State to track the list of items
-    var items by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+    var items by remember { mutableStateOf(employeeViewModel.items) }
 
     // State for the remaining amount
-    var remaining by remember { mutableStateOf("") }
+    var remaining by remember { mutableStateOf(employeeViewModel.remaining) }
     val scrollState = rememberScrollState()
     val context = LocalContext.current
-    val expanseDate=""
+    var selectedDate by remember { mutableStateOf(employeeViewModel.selectedDate) }
+    val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -55,7 +68,7 @@ fun RaiseExpense() {
         // Money Raise
         Text(
             text = "Money Raise",
-            style = androidx.compose.material3.MaterialTheme.typography.headlineSmall.copy(
+            style = MaterialTheme.typography.headlineSmall.copy(
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             ),
@@ -63,35 +76,37 @@ fun RaiseExpense() {
 
         OutlinedTextField(
             value = moneyRaise,
-            onValueChange = { moneyRaise = it },
+            onValueChange = {
+                moneyRaise = it
+                employeeViewModel.onMoneyRaiseChange(it)
+            },
             label = { Text("Enter Money Raise") },
             modifier = Modifier.fillMaxWidth(),
             colors = TextFieldDefaults.outlinedTextFieldColors(),
             shape = RoundedCornerShape(8.dp),
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         OutlinedTextField(
-            value = expanseDate,
+            value = selectedDate,
             onValueChange = { },
-            label = { Text("Start Date") },
+            label = { Text("Date") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             colors = TextFieldDefaults.outlinedTextFieldColors(),
             shape = RoundedCornerShape(8.dp),
             trailingIcon = {
                 IconButton(onClick = {
-                    showDatePickerDialog (context){
-                        /*
-                        employeeViewModel1.onChangeStartingDate(
-                            it
-                        )
+                    showDatePickerDialog (context){date ->
 
-                         */
+                        selectedDate = date
+                        employeeViewModel.onDateChange(date)
                     }
                 }) {
                     Icon(
                         painter = painterResource(id = R.drawable.calendar),
-                        contentDescription = "start Date"
+                        contentDescription = "Date"
                     )
                 }
             }
@@ -118,11 +133,19 @@ fun RaiseExpense() {
                     items = items.toMutableList().apply {
                         this[index] = name to items[index].second
                     }
+                    employeeViewModel.onItemsChange(items)
                 },
                 onValueChange = { value ->
                     items = items.toMutableList().apply {
                         this[index] = items[index].first to value
                     }
+                    employeeViewModel.onItemsChange(items)
+                },
+                onDeleteItem = { // Add deletion logic here
+                    items = items.toMutableList().apply {
+                        removeAt(index) // Remove the item at the current index
+                    }
+                    employeeViewModel.onItemsChange(items)
                 }
             )
         }
@@ -141,7 +164,10 @@ fun RaiseExpense() {
 
         OutlinedTextField(
             value = remaining,
-            onValueChange = { remaining = it },
+            onValueChange = {
+                remaining = it
+                employeeViewModel.onRemainingChange(it)
+            },
             label = { Text("Enter Remaining Amount") },
             modifier = Modifier.fillMaxWidth(),
             colors = TextFieldDefaults.outlinedTextFieldColors(),
@@ -158,6 +184,7 @@ fun RaiseExpense() {
             Button(onClick = {
                 // Add a new item
                 items = items + ("" to "")
+                employeeViewModel.onItemsChange(items)
                 },
                 modifier = Modifier.width(120.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -176,7 +203,26 @@ fun RaiseExpense() {
             Button(onClick = {
                 // Handle save logic
                 // You can perform actions like saving to database or showing a summary
-                },
+                scope.launch {
+                    employeeViewModel.raiseExpense(
+                        adminPhoneNumber = adminPhoneNumber,
+                        onSuccess = {
+                            val notification = MyNotification(context,
+                                title = "Firm Management App",
+                                message = "Request Added")
+
+                            notification.fireNotification()
+                        },
+                        onFailure = {
+                            val notification = MyNotification(context,
+                                title = "Firm Management App",
+                                message = "Request Added Failed")
+
+                            notification.fireNotification()
+                        }
+                    )
+                }
+            },
                 modifier = Modifier.width(120.dp),
                 colors = ButtonDefaults.buttonColors(
                     blueAcha
@@ -200,13 +246,15 @@ fun Item(
     name: String,
     value: String,
     onNameChange: (String) -> Unit,
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
+    onDeleteItem: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         OutlinedTextField(
             value = name,
@@ -227,6 +275,15 @@ fun Item(
             colors = TextFieldDefaults.outlinedTextFieldColors(),
             shape = RoundedCornerShape(8.dp),
         )
+        IconButton( // Use IconButton for the delete icon
+            onClick = onDeleteItem,
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close, // Replace with your clear icon resource
+                contentDescription = "Delete Item",
+            )
+        }
     }
 }
 
@@ -251,6 +308,6 @@ fun showDatePickerDialog(context:Context, onDateSelected: (String) -> Unit) {
 @Composable
 fun ExpensePreview(){
     FirmManagementTheme {
-        RaiseExpense()
+        RaiseExpense(loginViewModel = LoginViewModel())
     }
 }
