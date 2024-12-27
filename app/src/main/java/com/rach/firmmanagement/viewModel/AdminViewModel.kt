@@ -90,6 +90,20 @@ class AdminViewModel : ViewModel() {
         _registrationDate.value = newDate
     }
 
+    private val _timeVariation = MutableStateFlow("")
+    val timeVariation: StateFlow<String> = _timeVariation
+
+    fun onChangeTimeVariation(newTime: String){
+        _timeVariation.value = newTime
+    }
+
+    private val _leaveDays = MutableStateFlow("")
+    val leaveDays: StateFlow<String> = _leaveDays
+
+    fun onChangeLeaveDays(newDays: String){
+        _leaveDays.value = newDays
+    }
+
     val adminPhoneNumber = FirebaseAuth.getInstance().currentUser?.phoneNumber.toString()
 
     val repository = AdminRepository()
@@ -106,7 +120,9 @@ class AdminViewModel : ViewModel() {
                     phoneNumber = _phoneNumber.value,
                     role = _role.value,
                     salary = _salary.value,
-                    registrationDate = _registrationDate.value
+                    registrationDate = _registrationDate.value,
+                    timeVariation = _timeVariation.value,
+                    leaveDays = _leaveDays.value
                 ),
                 employeePhoneNumber = _phoneNumber.value,
                 adminPhoneNumber = adminPhoneNumber,

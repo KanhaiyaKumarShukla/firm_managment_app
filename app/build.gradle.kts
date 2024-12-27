@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.rach.firmmanagement"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.rach.firmmanagement"
@@ -66,7 +66,6 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-
     implementation(libs.androidx.material)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui.text.google.fonts)
@@ -85,4 +84,20 @@ dependencies {
     // Add the dependency for the Firebase Authentication library
     // When using the BoM, you don't specify versions in Firebase library dependencies
     implementation(libs.google.firebase.auth)
+
+
+    // for map
+    implementation(libs.play.services.maps)
+
+    // paces autocomplete 
+    implementation (libs.places)
+
+    // work manager
+    implementation(libs.androidx.work.runtime.ktx)
+
+    // coroutine
+
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+
 }

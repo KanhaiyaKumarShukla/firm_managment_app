@@ -25,6 +25,8 @@ import com.rach.firmmanagement.ui.theme.progressBarBgColor
 import com.rach.firmmanagement.viewModel.EmployeeViewModel1
 import com.rach.firmmanagement.viewModel.LoginViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material3.TextFieldDefaults
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +66,7 @@ fun AdvanceMoneyRequestScreen(
                 label = { Text("Requested Amount") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                colors = TextFieldDefaults.outlinedTextFieldColors(),
+
                 shape = RoundedCornerShape(8.dp),
             )
 
@@ -78,7 +80,6 @@ fun AdvanceMoneyRequestScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp),
-                colors = TextFieldDefaults.outlinedTextFieldColors(),
                 shape = RoundedCornerShape(8.dp),
                 maxLines = 5
             )

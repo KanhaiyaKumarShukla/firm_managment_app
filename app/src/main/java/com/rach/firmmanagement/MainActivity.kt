@@ -1,10 +1,12 @@
 package com.rach.firmmanagement
 
 import android.app.Activity
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.MaterialTheme
@@ -26,6 +28,7 @@ import com.rach.firmmanagement.employee.EmployAttendance
 import com.rach.firmmanagement.employee.PunchInOutApp
 import com.rach.firmmanagement.firmAdminOwner.AddWorkHoursScreen
 import com.rach.firmmanagement.firmAdminOwner.EmployeeDetailsProfile
+import com.rach.firmmanagement.firmAdminOwner.GoogleMapScreen
 import com.rach.firmmanagement.login.OtpScreen
 import com.rach.firmmanagement.login.PhoneNumberLogin
 import com.rach.firmmanagement.login.RegisterScreen
@@ -41,6 +44,7 @@ import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.LoginViewModel
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -55,6 +59,8 @@ class MainActivity : ComponentActivity() {
                 ) {
 
                     NavigationFirst()
+
+                    //GoogleMapScreen(activity = this)
                     //EmployeeDetailsProfile(viewModel = viewModel2)
                     //HomeScreen(loginViewModel = viewModel, navigateToLogin = {})
                 }

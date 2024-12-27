@@ -65,7 +65,7 @@ fun Expense(viewModel: AdminViewModel) {
                 onValueChange = { selectedIdentity = it },
                 label = { Text("Employee Ph.") },
                 modifier = Modifier.weight(1f),
-                colors = TextFieldDefaults.outlinedTextFieldColors(),
+
                 shape = RoundedCornerShape(8.dp),
                 singleLine = true
             )
@@ -76,7 +76,7 @@ fun Expense(viewModel: AdminViewModel) {
                 onValueChange = { },
                 label = { Text("Month") },
                 modifier = Modifier.weight(1f),
-                colors = TextFieldDefaults.outlinedTextFieldColors(),
+                // colors = TextFieldDefaults.outlinedTextFieldColors(),
                 shape = RoundedCornerShape(8.dp),
                 trailingIcon = {
                     IconButton(onClick = {

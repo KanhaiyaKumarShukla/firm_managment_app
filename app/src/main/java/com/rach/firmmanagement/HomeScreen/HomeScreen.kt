@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -88,6 +89,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun HomeScreen(
     loginViewModel: LoginViewModel,
@@ -120,7 +122,8 @@ fun HomeScreen(
 
             if (permissions[Manifest.permission.POST_NOTIFICATIONS] == true &&
                 permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true &&
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true //&&
+                //(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || permissions[Manifest.permission.ACCESS_BACKGROUND_LOCATION] == true)
             ) {
                 Toast.makeText(context, "Notification Permission Granted", Toast.LENGTH_LONG).show()
             } else {
@@ -142,8 +145,16 @@ fun HomeScreen(
                     )
                 } else {
                     TODO("VERSION.SDK_INT < TIRAMISU")
+                    false
                 }
-
+                /*
+                val backgroundLoc=if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ActivityCompat.shouldShowRequestPermissionRationale(
+                        context as Activity,
+                        Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                    )
+                } else false
+                */
                 if (rationRequired) {
 
                     Toast.makeText(
@@ -171,7 +182,7 @@ fun HomeScreen(
         if (notificationUtils.hasPermissionNotification(context)) {
             // Already Permission
         } else {
-
+            /**/
             requestPermissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.POST_NOTIFICATIONS,
@@ -181,6 +192,20 @@ fun HomeScreen(
 
             )
 
+             /*
+
+            val permissionsToRequest = mutableListOf(
+                Manifest.permission.POST_NOTIFICATIONS,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                permissionsToRequest.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+
+            requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+            */
         }
     }
 
@@ -345,8 +370,8 @@ fun AdminPanelScreen(
     navigateToViewAllTask: () -> Unit,
     navigateToTask: () -> Unit,
     navigateToEmployeeAttendance: () -> Unit,
-    navigateToAllExpense: () -> Unit
-
+    navigateToAllExpense: () -> Unit,
+    navigateToAddGeofence: () -> Unit
 ) {
 
 
@@ -434,6 +459,13 @@ fun AdminPanelScreen(
                 drawableRes = R.drawable.expense_list_ic,  // Settings icon for app settings
                 onClick = { navigateToAllExpense() }
             )
+
+            OptionCard(
+                title = "Add Geofence",
+                description = "Add Work Center",
+                drawableRes = R.drawable.location_icon,  // Settings icon for app settings
+                onClick = { navigateToAddGeofence() }
+            )
         }
 
     }
@@ -519,7 +551,7 @@ fun OptionCard(
 @Composable
 fun NoDij() {
     FirmManagementTheme {
-        AdminPanelScreen({}, {}, {}, {}, {}, {}, {}, {})
+        AdminPanelScreen({}, {}, {}, {}, {}, {}, {}, {}, {})
     }
 }
 

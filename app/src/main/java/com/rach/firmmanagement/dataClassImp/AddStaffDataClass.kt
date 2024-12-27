@@ -5,5 +5,7 @@ data class AddStaffDataClass(
     val phoneNumber:String? = "",
     val role:String? = "",
     val salary :String? = "",
-    val registrationDate: String? =""
+    val registrationDate: String? ="",
+    val timeVariation:String? = "",
+    val leaveDays:String? = "",
 )

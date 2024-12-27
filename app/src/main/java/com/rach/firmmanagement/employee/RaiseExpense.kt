@@ -85,7 +85,7 @@ fun RaiseExpense(
             },
             label = { Text("Enter Money Raise") },
             modifier = Modifier.fillMaxWidth(),
-            colors = TextFieldDefaults.outlinedTextFieldColors(),
+
             shape = RoundedCornerShape(8.dp),
         )
 
@@ -97,7 +97,6 @@ fun RaiseExpense(
             label = { Text("Date") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-            colors = TextFieldDefaults.outlinedTextFieldColors(),
             shape = RoundedCornerShape(8.dp),
             trailingIcon = {
                 IconButton(onClick = {
@@ -173,7 +172,6 @@ fun RaiseExpense(
             },
             label = { Text("Enter Remaining Amount") },
             modifier = Modifier.fillMaxWidth(),
-            colors = TextFieldDefaults.outlinedTextFieldColors(),
             shape = RoundedCornerShape(8.dp),
         )
 
@@ -264,7 +262,7 @@ fun Item(
             onValueChange = onNameChange,
             label = { Text("Name") },
             modifier = Modifier.weight(1f),
-            colors = TextFieldDefaults.outlinedTextFieldColors(),
+
             shape = RoundedCornerShape(8.dp),
         )
 
@@ -275,7 +273,7 @@ fun Item(
             onValueChange = onValueChange,
             label = { Text("Value") },
             modifier = Modifier.weight(1f),
-            colors = TextFieldDefaults.outlinedTextFieldColors(),
+
             shape = RoundedCornerShape(8.dp),
         )
         IconButton( // Use IconButton for the delete icon

@@ -2,13 +2,18 @@ package com.rach.firmmanagement.firmAdminOwner
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,6 +51,8 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
     val role by adminViewModel.role.collectAsState()
     val salary by adminViewModel.salary.collectAsState()
     val registrationDate by adminViewModel.registrationDate.collectAsState()
+    val timeVariation by adminViewModel.timeVariation.collectAsState()
+    val leaveDays by adminViewModel.leaveDays.collectAsState()
 
     val buttonState by adminViewModel.onButtonClicked.collectAsState()
 
@@ -56,6 +63,8 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
     val roleError = buttonState && role.isEmpty()
     val salaryError = buttonState && salary.isEmpty()
     val regDateError = buttonState && registrationDate.isEmpty()
+    val timeVariationError = buttonState && timeVariation.isEmpty()
+    val leaveDaysError = buttonState && leaveDays.isEmpty()
 
     val scope = rememberCoroutineScope()
 
@@ -74,7 +83,8 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 22.dp, end = 22.dp),
+            .padding(start = 22.dp, end = 22.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
@@ -140,7 +150,29 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
             isError = salaryError,
             readOnly = false
         )
-
+        Spacer(modifier = Modifier.height(10.dp))
+        CustomOutlinedTextFiled(
+            value = timeVariation,
+            onValueChange = {
+                adminViewModel.onChangeTimeVariation(it)
+            },
+            label = "Time Variation",
+            singleLine = true,
+            isError = timeVariationError,
+            readOnly = false
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        CustomOutlinedTextFiled(
+            value = leaveDays,
+            onValueChange = {
+                adminViewModel.onChangeLeaveDays(it)
+            },
+            label = "Leave Days",
+            singleLine = true,
+            isError = leaveDaysError,
+            readOnly = false
+        )
+        Spacer(modifier = Modifier.height(10.dp))
         CustomOutlinedTextFiled(
             value = registrationDate,
             onValueChange = {
@@ -151,11 +183,37 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
             isError = regDateError,
             readOnly = true
         )
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            CustomButton(
+                onClick = {
+                    if(!nameError && !phoneNumberError && !roleError && !salaryError && !regDateError && !timeVariationError && !leaveDaysError){
+                        // naviage to add holiday
+                    }else{
+                        // toast
+                    }
+                },
+                text = "Add Holidays"
+            )
 
+            CustomButton(
+                onClick = {
+                    if(!nameError && !phoneNumberError && !roleError && !salaryError && !regDateError && !timeVariationError && !leaveDaysError){
+                        // naviage to work hours
+                    }else{
+                        // toast
+                    }
+                },
+                text = "Add Work Time"
+            )
+        }
         Spacer(modifier = Modifier.height(40.dp))
 
 
-        Button(
+        CustomButton(
             onClick = {
                 adminViewModel.onButtonStateChange(true)
                 scope.launch {
@@ -187,21 +245,30 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
                     )
                 }
             },
-            colors = ButtonDefaults.buttonColors(
-                blueAcha
-            ),
+            text = "Register",
             modifier = Modifier.width(100.dp)
-        ) {
+        )
+    }
+}
 
-            Text(
-                text = "Register",
-                style = fontBablooBold,
-                color = Color.White
-            )
-
-        }
-
-
+@Composable
+fun CustomButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        colors= ButtonDefaults.buttonColors(
+            blueAcha
+        )
+    ) {
+        Text(
+            text = text,
+            style = fontBablooBold,
+            color = Color.White
+        )
     }
 }
 

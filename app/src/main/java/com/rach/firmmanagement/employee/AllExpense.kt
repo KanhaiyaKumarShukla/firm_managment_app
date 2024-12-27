@@ -54,7 +54,6 @@ fun AllExpense(
             onValueChange = { },
             label = { Text("Date") },
             modifier = Modifier.fillMaxWidth(),
-            colors = TextFieldDefaults.outlinedTextFieldColors(),
             shape = RoundedCornerShape(8.dp),
             trailingIcon = {
                 IconButton(onClick = {

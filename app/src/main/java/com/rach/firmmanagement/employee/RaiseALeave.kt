@@ -100,7 +100,6 @@ fun LeaveRequestScreen(
                 onValueChange = { employeeViewModel1.onChangeLeaveType(it) },
                 label = { Text("Leave Type") },
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.outlinedTextFieldColors(),
                 shape = RoundedCornerShape(8.dp),
             )
 
@@ -113,7 +112,7 @@ fun LeaveRequestScreen(
                 label = { Text("Start Date") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                colors = TextFieldDefaults.outlinedTextFieldColors(),
+
                 shape = RoundedCornerShape(8.dp),
                 trailingIcon = {
                     IconButton(onClick = {
@@ -140,7 +139,7 @@ fun LeaveRequestScreen(
                 label = { Text("End Date") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                colors = TextFieldDefaults.outlinedTextFieldColors(),
+
                 shape = RoundedCornerShape(8.dp),
                 trailingIcon = {
                     IconButton(onClick = {
@@ -167,7 +166,6 @@ fun LeaveRequestScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp),
-                colors = TextFieldDefaults.outlinedTextFieldColors(),
                 shape = RoundedCornerShape(8.dp),
                 maxLines = 5
             )

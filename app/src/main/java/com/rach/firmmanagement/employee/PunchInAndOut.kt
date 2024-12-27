@@ -296,7 +296,7 @@ fun OutOfWorkPortion(
             label = { Text("Add Out For Work Time in Hours") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-            colors = TextFieldDefaults.outlinedTextFieldColors(),
+            //colors = TextFieldDefaults.outlinedTextFieldColors(),
             shape = RoundedCornerShape(8.dp),
         )
 
