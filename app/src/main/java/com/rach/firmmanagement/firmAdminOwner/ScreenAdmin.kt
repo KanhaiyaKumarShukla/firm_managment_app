@@ -14,5 +14,7 @@ sealed class ScreenAdmin(val route: String) {
     object AllExpenses: ScreenAdmin("All Expenses")
     object AddGeofence: ScreenAdmin("Add Geofence")
     object AddGeofenceByMap : ScreenAdmin("Add Geofence By Map")
+    object HolidayTabMenu : ScreenAdmin( "Holiday Tab Menu")
+    object WorkHours: ScreenAdmin("Work Hours")
 
 }

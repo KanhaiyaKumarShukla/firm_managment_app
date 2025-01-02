@@ -25,7 +25,10 @@ import com.rach.firmmanagement.firmAdminOwner.HolidayAddScreen
 import com.rach.firmmanagement.firmAdminOwner.ScreenAdmin
 import com.rach.firmmanagement.navigationDrawer.NavViewModel
 import com.rach.firmmanagement.navigationDrawer.Screen
+import com.rach.firmmanagement.repository.HolidayRepository
+import com.rach.firmmanagement.repository.HolidayViewModelFactory
 import com.rach.firmmanagement.viewModel.EmlAllTask
+import com.rach.firmmanagement.viewModel.HolidayViewModel
 import com.rach.firmmanagement.viewModel.LoginViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -81,7 +84,6 @@ fun NavDrawerNavigation(
 
         composable(Screen.DrawerScreen.Settings.route) {
 
-            HolidayAddScreen()
 
         }
 

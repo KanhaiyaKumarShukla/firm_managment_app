@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.AddWorkingHourDataClass
@@ -161,6 +162,46 @@ class AdminRepository {
         }
 
     }
+
+    fun addWorkHoursForEmployees(
+        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        workHourData: AddWorkingHourDataClass,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        val db = FirebaseFirestore.getInstance()
+        val batch = db.batch()
+
+        try {
+            selectedEmployees.forEach { employee ->
+                val employeeDocRef = db
+                    .collection("Members")
+                    .document(currentUserPhoneNumber)
+                    .collection("Employee")
+                    .document(employee.phoneNumber.toString())
+                    .collection("WorkHour")
+                    .document(System.currentTimeMillis().toString())
+
+                // Ensure parent documents exist
+                val yearDocRef = db
+                    .collection("Members")
+                    .document(currentUserPhoneNumber)
+
+                Log.d("Work Hours", "Adding work hours for: $employee")
+                batch.set(yearDocRef, mapOf("created" to true), SetOptions.merge())
+                batch.set(employeeDocRef, workHourData)
+            }
+
+            batch.commit().addOnSuccessListener {
+                onSuccess()
+            }.addOnFailureListener {
+                onFailure()
+            }
+        } catch (e: Exception) {
+            onFailure()
+        }
+    }
+
 
     suspend fun loadTasks(adminPhoneNumber: String): List<AddTaskDataClass> {
         val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {

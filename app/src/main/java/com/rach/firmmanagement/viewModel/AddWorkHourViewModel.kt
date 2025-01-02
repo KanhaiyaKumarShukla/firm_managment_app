@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rach.firmmanagement.dataClassImp.AddWorkingHourDataClass
+import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -79,6 +80,27 @@ class AddWorkHourViewModel(private val repository: AdminRepository = AdminReposi
 
             )
 
+        }
+    }
+
+    fun addWorkHoursForEmployees(
+        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        viewModelScope.launch {
+            repository.addWorkHoursForEmployees(
+                selectedEmployees = selectedEmployees,
+
+                workHourData = AddWorkingHourDataClass(
+                    date = currentDate,
+                    startingTime = _starttime.value,
+                    endTime = _endTime.value,
+                    currentTime = currentTime
+                ),
+                onSuccess = onSuccess,
+                onFailure = onFailure
+            )
         }
     }
 

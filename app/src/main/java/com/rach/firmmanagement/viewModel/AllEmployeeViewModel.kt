@@ -59,7 +59,7 @@ class AllEmployeeViewModel(
     }
 
 
-    private fun loadAllEmployee(){
+     fun loadAllEmployee(){
         viewModelScope.launch {
 
 

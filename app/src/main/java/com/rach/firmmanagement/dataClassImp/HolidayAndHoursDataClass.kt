@@ -33,3 +33,17 @@ data class ViewAllEmployeeDataClass(
     val role:String? = "",
     val isSelected: Boolean = false
 )
+
+data class Festival(
+    val name: String = "",
+    val date: String = "",
+    val year: String = "",
+    val month: String="",
+    val selected: Boolean = false
+)
+
+data class RegularHolidayItems(
+    val weekOff:List<String> =emptyList(),
+    val monthOff:List<Int> =emptyList(),
+    val additionalOff:List<String> =emptyList()
+)

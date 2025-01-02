@@ -1,5 +1,6 @@
 package com.rach.firmmanagement.firmAdminOwner
 
+import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -27,10 +29,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.google.gson.Gson
+import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.necessaryItem.CustomOutlinedTextFiled
 import com.rach.firmmanagement.notification.MyNotification
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
@@ -39,10 +45,16 @@ import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.ui.theme.fontPoppinsMedium
 import com.rach.firmmanagement.ui.theme.progressBarBgColor
 import com.rach.firmmanagement.viewModel.AdminViewModel
+import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import kotlinx.coroutines.launch
 
+@SuppressLint("CoroutineCreationDuringComposition")
 @Composable
-fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
+fun AddStaff(
+    navController: NavController,
+    adminViewModel: AdminViewModel = viewModel(),
+    allEmployeeViewModel: AllEmployeeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
 
     val context = LocalContext.current
 
@@ -52,12 +64,15 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
     val salary by adminViewModel.salary.collectAsState()
     val registrationDate by adminViewModel.registrationDate.collectAsState()
     val timeVariation by adminViewModel.timeVariation.collectAsState()
+
+
     val leaveDays by adminViewModel.leaveDays.collectAsState()
 
     val buttonState by adminViewModel.onButtonClicked.collectAsState()
 
     val progressState by adminViewModel.progressBarState.collectAsState()
 
+    val allEmployees by allEmployeeViewModel.employeeList
     val nameError = buttonState && name.isEmpty()
     val phoneNumberError = buttonState && phoneNumber.isEmpty()
     val roleError = buttonState && role.isEmpty()
@@ -183,33 +198,6 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
             isError = regDateError,
             readOnly = true
         )
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            CustomButton(
-                onClick = {
-                    if(!nameError && !phoneNumberError && !roleError && !salaryError && !regDateError && !timeVariationError && !leaveDaysError){
-                        // naviage to add holiday
-                    }else{
-                        // toast
-                    }
-                },
-                text = "Add Holidays"
-            )
-
-            CustomButton(
-                onClick = {
-                    if(!nameError && !phoneNumberError && !roleError && !salaryError && !regDateError && !timeVariationError && !leaveDaysError){
-                        // naviage to work hours
-                    }else{
-                        // toast
-                    }
-                },
-                text = "Add Work Time"
-            )
-        }
         Spacer(modifier = Modifier.height(40.dp))
 
 
@@ -223,6 +211,7 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
                             Toast.makeText(context, "Registration SuccessFul", Toast.LENGTH_SHORT)
                                 .show()
                             adminViewModel.onChangeProgressState(false)
+                            allEmployeeViewModel.loadAllEmployee()
                             val notification = MyNotification(
                                 context = context,
                                 title = "Firm Management App",
@@ -248,6 +237,68 @@ fun AddStaff(adminViewModel: AdminViewModel = viewModel()) {
             text = "Register",
             modifier = Modifier.width(100.dp)
         )
+
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val isRegistered = allEmployees.any { it.phoneNumber == phoneNumber }
+            CustomButton(
+                onClick = {
+                    if(!nameError && !phoneNumberError && !roleError && !salaryError && !regDateError && !timeVariationError && !leaveDaysError){
+                        // naviage to add holiday
+                        if (isRegistered) {
+                            // Navigate to the HolidayTabMenu
+                            val selectedEmployee = ViewAllEmployeeDataClass(
+                                name = name,
+                                phoneNumber = phoneNumber,
+                                role = role,
+                                isSelected = true
+                            )
+                            val selectedEmployees = setOf(selectedEmployee)
+                            val employeesJson = Gson().toJson(selectedEmployees.toList()) // Convert to JSON for safe navigation
+                            navController.navigate(ScreenAdmin.HolidayTabMenu.route + "/$employeesJson")
+
+                        } else {
+                            // Show toast if not registered
+                            Toast.makeText(context, "Employee not registered. Please register first.", Toast.LENGTH_SHORT).show()
+                        }
+                    }else{
+                        // toast
+                        Toast.makeText(context, "Please fill in all the required fields.", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                text = "Add Holidays"
+            )
+
+            CustomButton(
+                onClick = {
+                    if(!nameError && !phoneNumberError && !roleError && !salaryError && !regDateError && !timeVariationError && !leaveDaysError){
+                        // naviage to work hours
+                        if (isRegistered) {
+                            // Navigate to the HolidayTabMenu
+                            val selectedEmployee = ViewAllEmployeeDataClass(
+                                name = name,
+                                phoneNumber = phoneNumber,
+                                role = role,
+                                isSelected = true
+                            )
+                            val selectedEmployees = setOf(selectedEmployee)
+                            val employeesJson = Gson().toJson(selectedEmployees.toList()) // Convert to JSON
+                            navController.navigate(ScreenAdmin.WorkHours.route + "/$employeesJson")
+                        } else {
+                            // Show toast if not registered
+                            Toast.makeText(context, "Employee not registered. Please register first.", Toast.LENGTH_SHORT).show()
+                        }
+                    }else{
+                        // toast
+                        Toast.makeText(context, "Please fill in all the required fields.", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                text = "Add Work Time"
+            )
+        }
     }
 }
 
@@ -256,10 +307,12 @@ fun CustomButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-) {
+
+    ) {
     Button(
         onClick = onClick,
         modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
         colors= ButtonDefaults.buttonColors(
             blueAcha
         )
@@ -267,7 +320,9 @@ fun CustomButton(
         Text(
             text = text,
             style = fontBablooBold,
-            color = Color.White
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -276,6 +331,6 @@ fun CustomButton(
 @Composable
 fun AddStaffPreview() {
     FirmManagementTheme {
-        AddStaff()
+        //AddStaff()
     }
 }
