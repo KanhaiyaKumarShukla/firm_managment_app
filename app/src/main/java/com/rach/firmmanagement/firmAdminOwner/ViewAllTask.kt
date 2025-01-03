@@ -26,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,22 +51,32 @@ import com.rach.firmmanagement.employee.AddRemarkDialog
 import com.rach.firmmanagement.employee.RemarksListDialog
 import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.ui.theme.fontBablooBold
-import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 
 @Composable
-fun ViewAllTask(adminViewModel: AdminViewModel= viewModel()) {
+fun ViewAllTask(
+    adminViewModel: AdminViewModel= viewModel(),
+    allEmployeeViewModel: AllEmployeeViewModel = viewModel()
+) {
 
     val tasks = adminViewModel.tasks.collectAsState()
     val loading = adminViewModel.loading.collectAsState()
-
-
+    val employees by allEmployeeViewModel.employeeList
+    val employeeLoading by allEmployeeViewModel.isLoading
     LaunchedEffect(Unit) {
-        adminViewModel.loadTasks()
+        allEmployeeViewModel.loadAllEmployee()
+    }
+    LaunchedEffect(employees) {
+        if(!employees.isEmpty()){
+            adminViewModel.loadTasks(employees)
+        }
     }
 
-    if (loading.value) { // Use .value for State objects
+    if (loading.value or employeeLoading) { // Use .value for State objects
         CircularProgressIndicator()
     } else {
         LazyColumn {
@@ -78,6 +87,7 @@ fun ViewAllTask(adminViewModel: AdminViewModel= viewModel()) {
                         adminViewModel.addRemark(
                             isCommon = item.isCommon,
                             taskId = item.id,
+                            employeePhone = item.employeePhoneNumber,
                             newRemark = remark,
                             onSuccess = {
                                 Log.d("TAG", "Remark added successfully")
@@ -90,7 +100,8 @@ fun ViewAllTask(adminViewModel: AdminViewModel= viewModel()) {
                     fetchRemarks = {
                         adminViewModel.fetchRemarks(
                             isCommon = item.isCommon,
-                            taskId = item.id
+                            taskId = item.id,
+                            employeePhone = item.employeePhoneNumber
                         )
                     },
                     onDeleteClick = {
@@ -121,7 +132,7 @@ fun ViewAllTaskDesign(
     LaunchedEffect(Unit) {
         // This will run when the composable is first composed or recomposed
         remarks = fetchRemarks()
-        Log.d("TAG", "RemarkCount: ${remarks.size}")
+        Log.d("Task", "RemarkCount: ${remarks.size}")
     }
 
     LaunchedEffect(showRemarkListDialog) {
@@ -129,7 +140,7 @@ fun ViewAllTaskDesign(
             scope.launch {
                 remarks = fetchRemarks()
                 remarkCount = remarks.size
-                Log.d("TAG", "RemarkCount: ${remarks.size}")
+                Log.d("Task", "RemarkCount: ${remarks.size}")
             }
         }
     }
@@ -137,7 +148,7 @@ fun ViewAllTaskDesign(
         if (!showAddRemarkDialog) {
             scope.launch {
                 remarks = fetchRemarks()
-                Log.d("TAG", "Add remark : RemarkCount: ${remarks.size}")
+                Log.d("Task", "Add remark : RemarkCount: ${remarks.size}")
             }
         }
     }
@@ -201,16 +212,43 @@ fun ViewAllTaskDesign(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Task Date
-            Text(
-                text = item.date,
-                fontSize = 16.sp,
-                style = fontBablooBold,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                textAlign = TextAlign.Center
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Task Date
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = "Assignment Date: ${item.assignDate}",
+                        fontSize = 16.sp,
+                        style = fontBablooBold,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                        textAlign = TextAlign.Start
+                    )
+                    Text(
+                        text = "Submission Date: ${item.submitDate}",
+                        fontSize = 14.sp,
+                        style = fontBablooBold,
+                        textAlign = TextAlign.Start
+                    )
+                }
+                Text(
+                    text = if (item.status == "Completed") {
+                        "Completed"
+                    } else {
+                        findStatusOfTask(item.submitDate)
+                    },
+                    fontSize = 18.sp,
+                    style = fontBablooBold,
+                    textAlign = TextAlign.Center,
+                    color=Color.Red
+                )
+
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -306,6 +344,28 @@ fun ViewAllTaskDesign(
         }
     }
 
+}
+fun findStatusOfTask(date: String): String {
+    return try {
+        // Define the date format used for the input date
+        val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+        val taskDate = dateFormat.parse(date) // Parse the input date string
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time // Get today's date with time set to 00:00:00
+
+        if (taskDate.before(today)) {
+            "Overdue" // Task date is before today
+        } else {
+            "Open" // Task date is today or later
+        }
+    } catch (e: Exception) {
+        Log.e("Task", "$date ,${e.message}")
+        "Invalid Date" // Handle any parsing errors
+    }
 }
 
 @Preview

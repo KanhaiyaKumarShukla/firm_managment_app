@@ -191,10 +191,11 @@ fun PunchInOutButtons(
                 onClick = {
                     scope.launch {
                         if (notification.hasPermissionNotification(context)) {
+                            Log.d("Att", "permission granted")
                             viewModel.onChangeProgressBarState(true)
                             locationUtils.requestLocationUpdates(viewModel = viewModel)
                             // change address != "Location not available" to
-                            Log.d("Att", "$adminPhoneNumber, $address, $nameHai")
+                            Log.d("Att", "$adminPhoneNumber, $address, $nameHai, $location")
                             if (location != null && address != "Address Not Found") {
                                 if (nameHai != null) {
                                     viewModel.punchIn(
@@ -223,6 +224,7 @@ fun PunchInOutButtons(
                                 ).show()
                             }
                         } else {
+                            Log.d("Att", "permission not granted")
                             requestPermissionLauncher.launch(
                                 arrayOf(
                                     Manifest.permission.ACCESS_COARSE_LOCATION,

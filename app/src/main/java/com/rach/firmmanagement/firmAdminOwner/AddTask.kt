@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
@@ -26,14 +25,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.necessaryItem.CustomOutlinedTextFiled
+import com.rach.firmmanagement.necessaryItem.DatePickerHaiDialog
 import com.rach.firmmanagement.notification.MyNotification
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
-import com.rach.firmmanagement.ui.theme.blueAcha
-import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.viewModel.AdminViewModel
+import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import kotlinx.coroutines.launch
-
+/*
 @Composable
 fun AddTask(viewModel: AdminViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
 
@@ -144,6 +144,111 @@ fun AddTask(viewModel: AdminViewModel = androidx.lifecycle.viewmodel.compose.vie
     }
 
 }
+
+ */
+
+@Composable
+fun AddTask(
+    adminViewModel: AdminViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    employeeViewModel: AllEmployeeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val assignDate by adminViewModel.assignTaskDate.collectAsState()
+    val submitDate by adminViewModel.submitionTaskDate.collectAsState()
+    val task by adminViewModel.task.collectAsState()
+    val progressbar by adminViewModel.state.collectAsState()
+    val selectedEmployees = remember { mutableStateOf(setOf<ViewAllEmployeeDataClass>()) }
+    val employees = employeeViewModel.employeeList.value // Assuming employee list comes from AdminViewModel
+    var isError by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (progressbar) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                EmployeeSelection(
+                    employees = employees,
+                    selectedEmployees = selectedEmployees
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                DatePickerHaiDialog(
+                    label = "Assign Date",
+                    value = assignDate,
+                    onValueChange = { adminViewModel.onChangeAssignTaskDate(it) },
+                    context = LocalContext.current,
+                    read = true
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+                DatePickerHaiDialog(
+                    label = "Submit Date",
+                    value = submitDate,
+                    onValueChange = { adminViewModel.onChangeSubmitionTaskDate(it) },
+                    context = LocalContext.current,
+                    read = true
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                CustomOutlinedTextFiled(
+                    value = task,
+                    onValueChange = { adminViewModel.onChangeTask(it) },
+                    label = "Enter Task",
+                    singleLine = false,
+                    isError = isError,
+                    readOnly = false
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                CustomButton(
+                    onClick = {
+                        if (task.isEmpty()) {
+                            isError = true
+                        } else {
+                            scope.launch {
+                                adminViewModel.onStateChange(true)
+                                adminViewModel.assignTask(
+                                    selectedEmployees = selectedEmployees.value,
+                                    onSuccess = {
+                                        Toast.makeText(context, "Task Assigned", Toast.LENGTH_LONG).show()
+                                        adminViewModel.onStateChange(false)
+                                        val notification = MyNotification(
+                                            context = context,
+                                            title = "Firm Management App",
+                                            message = "Task Added"
+                                        )
+
+                                        notification.fireNotification()
+                                    },
+                                    onFailure = {
+                                        Toast.makeText(context, "Task Assignment Failed", Toast.LENGTH_LONG).show()
+                                        adminViewModel.onStateChange(false)
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    text = "Assign Task",
+                )
+            }
+        }
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable

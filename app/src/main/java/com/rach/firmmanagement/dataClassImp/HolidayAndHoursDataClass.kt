@@ -14,9 +14,12 @@ data class AddWorkingHourDataClass(
 
 data class AddTaskDataClass(
     val id: String = "",                    // Task ID
-    val task: String = "",                  // Task description
-    val date: String = "",                  // Task creation date
-    val isCommon: Boolean = true,          // Flag for common task
+    val employeePhoneNumber: String = "",   // Employee phone number
+    val assignDate: String = "",                  // Task description
+    val task: String = "",                  // Task creation date
+    val submitDate: String = "",
+    val isCommon: Boolean = false, // Flag for common task
+    val status:String = "Open",
     val remarks: List<Remark> = emptyList() // List of remarks
 )
 

@@ -8,4 +8,5 @@ data class AddStaffDataClass(
     val registrationDate: String? ="",
     val timeVariation:String? = "",
     val leaveDays:String? = "",
+    val workPlace: GeofenceItems = GeofenceItems()
 )

@@ -8,6 +8,7 @@ import android.location.Address
 import android.location.Geocoder
 import android.os.Build
 import android.os.Looper
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -41,11 +42,13 @@ class NotificationUtils(
 
                 override fun onLocationResult(locationResult: LocationResult) {
                     super.onLocationResult(locationResult)
+                    Log.d("Att", "Location Updated")
                     locationResult.lastLocation?.let {
                         val location = LocationData(
                             latitude = it.latitude,
                             longitude = it.longitude
                         )
+                        Log.d("Att", location.toString())
                         viewModel.onChangeLocation(location)
                     }
                 }

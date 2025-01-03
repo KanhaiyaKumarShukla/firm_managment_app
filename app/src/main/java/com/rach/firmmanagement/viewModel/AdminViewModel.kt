@@ -1,22 +1,29 @@
 package com.rach.firmmanagement.viewModel
 
+import android.annotation.SuppressLint
+import android.util.Log
+import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.Expense
+import com.rach.firmmanagement.dataClassImp.GeofenceItems
 import com.rach.firmmanagement.dataClassImp.HolidayAndHoursDataClass
+import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import com.rach.firmmanagement.dataClassImp.Remark
+import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-class AdminViewModel : ViewModel() {
+class AdminViewModel() : ViewModel() {
 
     // currentAdminPhoneNumber
 
@@ -104,6 +111,12 @@ class AdminViewModel : ViewModel() {
         _leaveDays.value = newDays
     }
 
+    private val _selectedGeoFence=MutableStateFlow(GeofenceItems())
+    val selectedGeoFence:StateFlow<GeofenceItems> = _selectedGeoFence
+    fun onGeoFenceChanged(newGeoFence: GeofenceItems){
+        _selectedGeoFence.value = newGeoFence
+    }
+
     val adminPhoneNumber = FirebaseAuth.getInstance().currentUser?.phoneNumber.toString()
 
     val repository = AdminRepository()
@@ -122,7 +135,8 @@ class AdminViewModel : ViewModel() {
                     salary = _salary.value,
                     registrationDate = _registrationDate.value,
                     timeVariation = _timeVariation.value,
-                    leaveDays = _leaveDays.value
+                    leaveDays = _leaveDays.value,
+                    workPlace = _selectedGeoFence.value
                 ),
                 employeePhoneNumber = _phoneNumber.value,
                 adminPhoneNumber = adminPhoneNumber,
@@ -179,6 +193,19 @@ class AdminViewModel : ViewModel() {
 
     ///  Add Task
 
+    private val _assignTaskDate = MutableStateFlow("")
+    val assignTaskDate: StateFlow<String> = _assignTaskDate
+
+    fun onChangeAssignTaskDate(newDate: String) {
+        _assignTaskDate.value = newDate
+    }
+    private val _submitionTaskDate = MutableStateFlow("")
+    val submitionTaskDate: StateFlow<String> = _submitionTaskDate
+
+    fun onChangeSubmitionTaskDate(newDate: String) {
+        _submitionTaskDate.value = newDate
+    }
+
     private val _task = MutableStateFlow("")
     val task: StateFlow<String> = _task
 
@@ -201,10 +228,29 @@ class AdminViewModel : ViewModel() {
         viewModelScope.launch {
             repository.addTask(
                 addTaskDataClass = AddTaskDataClass(
-                    date = _registrationDate.value,
+                    assignDate = _registrationDate.value,
                     task = _task.value
                 ),
                 adminPhoneNumber = currentUser,
+                onSuccess = onSuccess,
+                onFailure = onFailure
+            )
+        }
+    }
+
+    fun assignTask(
+        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ){
+        viewModelScope.launch{
+            repository.assignTask(
+                selectedEmployees = selectedEmployees,
+                addTaskDataClass = AddTaskDataClass(
+                    assignDate = _assignTaskDate.value,
+                    task = _task.value,
+                    submitDate = _submitionTaskDate.value
+                ),
                 onSuccess = onSuccess,
                 onFailure = onFailure
             )
@@ -224,14 +270,18 @@ class AdminViewModel : ViewModel() {
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> get() = _loading
 
-    fun loadTasks() {
+    fun loadTasks(allEmployees:List<ViewAllEmployeeDataClass>) {
         viewModelScope.launch {
             _loading.value = true
+            Log.d("Task", "load Tasks")
             try {
-                val taskList = repository.loadTasks(adminPhoneNumber)
+
+                Log.d("Task", allEmployees.toString())
+                val taskList = repository.loadTasks(adminPhoneNumber, allEmployees)
                 _tasks.value = taskList
             } catch (e: Exception) {
                 e.printStackTrace()
+                Log.d("Task", e.message.toString())
                 _tasks.value = emptyList() // Handle error case
             } finally {
                 _loading.value = false
@@ -316,6 +366,68 @@ class AdminViewModel : ViewModel() {
             )
         }
 
+    }
+
+
+    // Employee Attendance
+    private val _fromDate = MutableStateFlow(getTodayDate())
+    val fromDate: StateFlow<String> = _fromDate
+
+    fun onChangeAttendanceFromDate(newDate: String) {
+        _fromDate.value = newDate
+    }
+
+    private val _toDate = MutableStateFlow(getTodayDate())
+    val toDate: StateFlow<String> = _toDate
+
+    fun onChangeAttendanceToDate(newDate: String) {
+        _toDate.value = newDate
+    }
+
+    private val _selectedMonth = MutableStateFlow("")
+    val selectedMonth: StateFlow<String> = _selectedMonth
+
+    fun onChangeSelectedMonth(newMonth: String) {
+        _selectedMonth.value = newMonth
+    }
+
+    private val _attendance=MutableStateFlow<List<PunchInPunchOut>>(emptyList())
+    val attendance:StateFlow<List<PunchInPunchOut>> = _attendance
+
+    @SuppressLint("DefaultLocale")
+    fun getTodayDate(): String {
+        val calendar = Calendar.getInstance()
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH) + 1 // Month is 0-indexed
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+        return String.format("%02d-%02d-%04d", day, month, year)
+    }
+
+    fun fetchAttendance(
+        selectedEmployees: List<ViewAllEmployeeDataClass>,
+        from: String,
+        to: String,
+        selectedMonth: String
+    ){
+        viewModelScope.launch {
+            _loading.value = true
+            repository.fetchAttendance(
+                adminPhoneNumber=adminPhoneNumber,
+                selectedEmployees = selectedEmployees,
+                from = from,
+                to = to,
+                selectedMonth = selectedMonth,
+                onSuccess = {
+                    _attendance.value = it
+                    _loading.value = false
+                },
+                onFailure = {
+                    _attendance.value = emptyList()
+                    _loading.value = false
+                }
+            )
+        }
     }
 
 

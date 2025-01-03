@@ -60,7 +60,6 @@ class AddWorkHourViewModel(private val repository: AdminRepository = AdminReposi
     val timeFormat = SimpleDateFormat("hh:mm:ss a", Locale.getDefault())
     val currentTime: String = timeFormat.format(Date())
 
-
     fun addWorkHours(
         onSuccess: () -> Unit,
         onFailure: () -> Unit
@@ -82,6 +81,8 @@ class AddWorkHourViewModel(private val repository: AdminRepository = AdminReposi
 
         }
     }
+
+
 
     fun addWorkHoursForEmployees(
         selectedEmployees: Set<ViewAllEmployeeDataClass>,

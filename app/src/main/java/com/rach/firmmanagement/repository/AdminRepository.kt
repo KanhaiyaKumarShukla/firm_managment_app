@@ -1,9 +1,10 @@
 package com.rach.firmmanagement.repository
 
 import android.util.Log
-import androidx.compose.runtime.mutableStateOf
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
@@ -11,10 +12,13 @@ import com.rach.firmmanagement.dataClassImp.AddWorkingHourDataClass
 import com.rach.firmmanagement.dataClassImp.Expense
 import com.rach.firmmanagement.dataClassImp.ExpenseItem
 import com.rach.firmmanagement.dataClassImp.HolidayAndHoursDataClass
+import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import kotlinx.coroutines.tasks.await
-import okhttp3.internal.wait
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class AdminRepository {
 
@@ -134,6 +138,44 @@ class AdminRepository {
         }
     }
 
+    suspend fun assignTask(
+        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        addTaskDataClass: AddTaskDataClass,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ){
+        try {
+
+            val batch=database.batch()
+            selectedEmployees.forEach { employee ->
+                val employeeDocRef = database
+                    .collection("Members")
+                    .document(currentUserPhoneNumber)
+                    .collection("Employee")
+                    .document(employee.phoneNumber.toString())
+                    .collection("Task")
+                    .document(System.currentTimeMillis().toString())
+
+                // Ensure parent documents exist
+                val adminDocRef = database
+                    .collection("Members")
+                    .document(currentUserPhoneNumber)
+
+                Log.d("Work Hours", "Adding work hours for: $employee")
+                batch.set(adminDocRef, mapOf("created" to true), SetOptions.merge())
+                batch.set(employeeDocRef, addTaskDataClass.copy(id = employeeDocRef.id, employeePhoneNumber = employee.phoneNumber.toString()))
+            }
+
+            batch.commit().addOnSuccessListener {
+                onSuccess()
+            }.addOnFailureListener {
+                onFailure()
+            }
+        }catch (e: Exception) {
+            onFailure()
+        }
+    }
+
     suspend fun addWorkingHour(
         addWorkingHourDataClass: AddWorkingHourDataClass,
         date: String,
@@ -203,7 +245,10 @@ class AdminRepository {
     }
 
 
-    suspend fun loadTasks(adminPhoneNumber: String): List<AddTaskDataClass> {
+    suspend fun loadTasks(
+        adminPhoneNumber: String,
+        employees: List<ViewAllEmployeeDataClass>
+    ): List<AddTaskDataClass> {
         val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
             adminPhoneNumber
         } else {
@@ -211,17 +256,24 @@ class AdminRepository {
         }
 
         val taskList = mutableListOf<AddTaskDataClass>()
-        val commonTaskData = database.collection("Members")
-            .document(updateAdminNumber)
-            .collection("Tasks")
-            .get()
-            .await()
+        for (employee in employees) {
+            val employeeTasksData = database.collection("Members")
+                .document(updateAdminNumber)
+                .collection("Employee")
+                .document(employee.phoneNumber.toString())
+                .collection("Task")
+                .get()
+                .await()
+            Log.d("Task", employee.toString())
 
-        if (!commonTaskData.isEmpty) {
-            val commonTasks = commonTaskData.documents.mapNotNull { document ->
-                document.toObject(AddTaskDataClass::class.java)?.copy(id = document.id)
+            if (!employeeTasksData.isEmpty) {
+                Log.d("Task", "not empty")
+                val employeeTasks = employeeTasksData.documents.mapNotNull { document ->
+                    document.toObject(AddTaskDataClass::class.java)?.copy(id = document.id)
+                }
+                taskList.addAll(employeeTasks)
+                Log.d("Task", "$taskList")
             }
-            taskList.addAll(commonTasks)
         }
         return taskList
     }
@@ -233,17 +285,15 @@ class AdminRepository {
             "+91$adminPhoneNumber"
         }
 
-        val documentsToDelete = database.collection("Members")
+        val taskDocRef = database.collection("Members")
             .document(updateAdminNumber)
-            .collection("Tasks")
-            .whereEqualTo("date", task.date)
-            .whereEqualTo("task", task.task)
-            .get()
-            .await()
+            .collection("Employee")
+            .document(task.employeePhoneNumber)
+            .collection("Task")
+            .document(task.id)
 
-        for (document in documentsToDelete.documents) {
-            document.reference.delete().await()
-        }
+        // Delete the task document
+        taskDocRef.delete().await()
     }
 
     suspend fun addRemark(
@@ -273,11 +323,11 @@ class AdminRepository {
                     .document(updateAdminNumber)
                     .collection("Employee")
                     .document(employeePhone)
-                    .collection("tasks")
+                    .collection("Task")
                     .document(taskId)
             }
 
-            Log.d("TAG","$taskId, $isCommon, $employeePhone, $taskRef, $adminPhoneNumber")
+            Log.d("Task","$taskId, $isCommon, $employeePhone, $taskRef, $adminPhoneNumber")
 
             // Fetch the current task data
             val snapshot = taskRef.get().await()
@@ -320,7 +370,7 @@ class AdminRepository {
                     .document(updateAdminNumber)
                     .collection("Employee")
                     .document(employeePhone)
-                    .collection("tasks")
+                    .collection("Task")
                     .document(taskId)
             }
             // Fetch the current task data from Firestore
@@ -329,11 +379,11 @@ class AdminRepository {
 
             // Extract remarks from the fetched task data
             val remarks = taskData?.remarks ?: emptyList()
-            Log.d("TAG", "fetched successful")
+            Log.d("Task", "fetched successful")
             remarks
 
         } catch (e: Exception) {
-            Log.e("TAG", "Failed to fetch remarks: ${e.message}")
+            Log.e("Task", "Failed to fetch remarks: ${e.message}")
             emptyList()
         }
     }
@@ -394,6 +444,100 @@ class AdminRepository {
 
         } catch (e: Exception) {
             Log.d("ExpensesData", "Error in getExpensesForMonth: ${e.message}")
+            onFailure()
+        }
+    }
+
+    // Attendance :
+
+    suspend fun fetchAttendance(
+        adminPhoneNumber: String,
+        selectedEmployees: List<ViewAllEmployeeDataClass>,
+        from: String,
+        to: String,
+        selectedMonth: String,
+        onSuccess: (List<PunchInPunchOut>) -> Unit,
+        onFailure: () -> Unit
+    ){
+        try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+            val attendanceList = mutableListOf<PunchInPunchOut>()
+            Log.d("Attendance", "Fetching attendance for: $selectedEmployees, $from, $to, $selectedMonth")
+            if(selectedMonth.isEmpty()){
+                val fromDate = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).parse(from)
+                val toDate = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).parse(to)
+                val calendar = Calendar.getInstance()
+                for (employee in selectedEmployees) {
+                    calendar.time = fromDate
+
+                    while (calendar.time <= toDate) {
+                        val targetYear = calendar.get(Calendar.YEAR).toString()
+                        val targetMonth =
+                            SimpleDateFormat("MMM", Locale.getDefault()).format(calendar.time)
+                        val targetDate =
+                            SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(calendar.time)
+
+                        val entriesSnapshot = database.collection("Members")
+                            .document(updateAdminNumber)
+                            .collection("Employee")
+                            .document(employee.phoneNumber.toString())
+                            .collection("Attendance")
+                            .document(targetYear)
+                            .collection(targetMonth)
+                            .document(targetDate)
+                            .collection("Entries")
+                            .orderBy(FieldPath.documentId(), Query.Direction.DESCENDING)
+                            .limit(1)
+                            .get()
+                            .await()
+                        Log.d("Attendance", "Entries Snapshot: ${entriesSnapshot.documents}")
+                        if (!entriesSnapshot.isEmpty) {
+                            val latestEntry = entriesSnapshot.documents.firstOrNull()?.toObject(PunchInPunchOut::class.java)
+                            latestEntry?.let { attendanceList.add(it) }
+                        }
+                        calendar.add(Calendar.DATE, 1)
+                    }
+                }
+            }else{
+                val parts = selectedMonth.split(" ")
+                val targetMonth = parts[0]
+                val targetYear = parts[1]
+
+                for (employee in selectedEmployees) {
+                    val yearDocRef = database.collection("Members")
+                        .document(updateAdminNumber)
+                        .collection("Employee")
+                        .document(employee.phoneNumber.toString())
+                        .collection("Attendance")
+                        .document(targetYear)
+                    Log.d("Attendance", "Year Doc Ref: ${yearDocRef.path}")
+                    val monthDocSnapshot = yearDocRef.collection(targetMonth)
+                        .get()
+                        .await()
+                    Log.d("Attendance", "Month Doc Snapshot: ${monthDocSnapshot.documents}")
+                    for (dateDoc in monthDocSnapshot.documents) {
+                        val entriesSnapshot = dateDoc.reference.collection("Entries")
+                            .orderBy(FieldPath.documentId(), Query.Direction.DESCENDING)
+                            .limit(1)
+                            .get()
+                            .await()
+
+                        if (!entriesSnapshot.isEmpty) {
+                            val latestEntry = entriesSnapshot.documents.firstOrNull()
+                                ?.toObject(PunchInPunchOut::class.java)
+                            latestEntry?.let { attendanceList.add(it) }
+                        }
+                    }
+                }
+            }
+            Log.d("Attendance", "final list: $attendanceList")
+            onSuccess(attendanceList)
+
+        }catch (e: Exception) {
             onFailure()
         }
     }

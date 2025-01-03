@@ -99,7 +99,7 @@ fun Navigation2(){
             ViewAllTask()
         }
         composable(ScreenAdmin.EmployeeAttendance.route){
-            AllEmployeeAttendance(employeeViewModel=emViewModel)
+            AllEmployeeAttendance()
         }
 
         composable(ScreenAdmin.AllExpenses.route){

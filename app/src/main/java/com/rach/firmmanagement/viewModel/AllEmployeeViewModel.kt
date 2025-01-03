@@ -61,9 +61,6 @@ class AllEmployeeViewModel(
 
      fun loadAllEmployee(){
         viewModelScope.launch {
-
-
-
             isLoading.value = true
             repository.viewAllEmployee(
                 viewAllEmployeeDataClass = ViewAllEmployeeDataClass(),
@@ -131,7 +128,7 @@ class AllEmployeeViewModel(
 
              */
 
-            val taskData= AddTaskDataClass(task=task, date = _registrationDate.value, isCommon = false, id = taskRef.id)
+            val taskData= AddTaskDataClass(task=task, assignDate = _registrationDate.value, isCommon = false, id = taskRef.id)
 
             taskRef.set(taskData)
                 .addOnSuccessListener {

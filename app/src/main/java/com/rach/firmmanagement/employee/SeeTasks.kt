@@ -44,13 +44,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
 import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.ui.theme.fontBablooBold
-import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.EmlAllTask
 import com.rach.firmmanagement.viewModel.LoginViewModel
 import kotlinx.coroutines.launch
@@ -168,7 +166,7 @@ fun SeeTasksDesign(
         ) {
             // Task Date
             Text(
-                text = item.date,
+                text = item.assignDate,
                 fontSize = 16.sp,
                 style = fontBablooBold,
                 modifier = Modifier
