@@ -131,6 +131,7 @@ class AdminViewModel() : ViewModel() {
                 addStaffDataClass = AddStaffDataClass(
                     name = _empName.value,
                     phoneNumber = _phoneNumber.value,
+                    newPhoneNumber = _phoneNumber.value,
                     role = _role.value,
                     salary = _salary.value,
                     registrationDate = _registrationDate.value,
@@ -288,6 +289,22 @@ class AdminViewModel() : ViewModel() {
             }
         }
     }
+    private val _oneEmployeeTask = MutableStateFlow<List<AddTaskDataClass>>(emptyList())
+    val oneEmployeeTask: StateFlow<List<AddTaskDataClass>> get() = _oneEmployeeTask
+    fun loadOneEmployeeTask(employee: ViewAllEmployeeDataClass){
+        viewModelScope.launch {
+            _loading.value = true
+            try {
+                val taskList = repository.loadOneEmployeeTask(adminPhoneNumber, employee)
+                _oneEmployeeTask.value = taskList
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _oneEmployeeTask.value = emptyList() // Handle error case
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
 
     fun deleteTask( task: AddTaskDataClass) {
         viewModelScope.launch {
@@ -374,6 +391,7 @@ class AdminViewModel() : ViewModel() {
     val fromDate: StateFlow<String> = _fromDate
 
     fun onChangeAttendanceFromDate(newDate: String) {
+        Log.d("Attendance", "FromDateChange: $newDate")
         _fromDate.value = newDate
     }
 
@@ -381,6 +399,7 @@ class AdminViewModel() : ViewModel() {
     val toDate: StateFlow<String> = _toDate
 
     fun onChangeAttendanceToDate(newDate: String) {
+        Log.d("Attendance", "ToDateChange: $newDate")
         _toDate.value = newDate
     }
 
@@ -388,6 +407,7 @@ class AdminViewModel() : ViewModel() {
     val selectedMonth: StateFlow<String> = _selectedMonth
 
     fun onChangeSelectedMonth(newMonth: String) {
+        Log.d("Attendance", "MonthChange: $newMonth")
         _selectedMonth.value = newMonth
     }
 
@@ -430,7 +450,156 @@ class AdminViewModel() : ViewModel() {
         }
     }
 
+    // employee profile
+    var isProfileLoading = mutableStateOf(false)
+        private set
 
+    private val _Staffname = MutableStateFlow("")
+    val staffName: StateFlow<String> = _Staffname
 
+    fun onChangeStaffName(newName: String) {
+        _Staffname.value = newName
+    }
+
+    private val _staffOldPhoneNumber = MutableStateFlow("")
+    val staffOldPhoneNumber: StateFlow<String> = _staffOldPhoneNumber
+    private val _staffNewPhoneNumber = MutableStateFlow("")
+    val staffNewPhoneNumber: StateFlow<String> = _staffNewPhoneNumber
+
+    fun onChangeStaffPhoneNumber(newPhoneNumber: String) {
+        _staffNewPhoneNumber.value = newPhoneNumber
+    }
+
+    private val _staffRole = MutableStateFlow("")
+    val staffRole: StateFlow<String> = _staffRole
+
+    fun onChangeStaffRole(newRole: String) {
+        _staffRole.value = newRole
+    }
+
+    private val _staffSalary = MutableStateFlow("")
+    val staffSalary: StateFlow<String> = _staffSalary
+
+    fun onChangeStaffSalary(newSalary: String) {
+        _staffSalary.value = newSalary
+    }
+
+    private val _staffRegistrationDate = MutableStateFlow("")
+    val staffRegistrationDate: StateFlow<String> = _staffRegistrationDate
+
+    fun onChangeStaffRegistrationDate(newDate: String) {
+        _staffRegistrationDate.value = newDate
+    }
+
+    private val _staffTimeVariation = MutableStateFlow("")
+    val staffTimeVariation: StateFlow<String> = _staffTimeVariation
+
+    fun onChangeStaffTimeVariation(newTimeVariation: String) {
+        _staffTimeVariation.value = newTimeVariation
+    }
+
+    private val _staffLeaveDays = MutableStateFlow("")
+    val staffLeaveDays: StateFlow<String> = _staffLeaveDays
+
+    fun onChangeStaffLeaveDays(newLeaveDays: String) {
+        _staffLeaveDays.value = newLeaveDays
+    }
+
+    private val _staffWorkPlace = MutableStateFlow(GeofenceItems())
+    val staffWorkPlace: StateFlow<GeofenceItems> = _staffWorkPlace
+
+    fun onChangeStaffWorkPlace(newWorkPlace: GeofenceItems) {
+        _staffWorkPlace.value = newWorkPlace
+    }
+
+    // Load staff data
+    fun loadStaff(employeePhoneNumber: String) {
+        viewModelScope.launch {
+            isProfileLoading.value = true
+            repository.getStaff(
+                adminPhoneNumber = adminPhoneNumber,
+                employeePhoneNumber = employeePhoneNumber,
+                onSuccess = { staff ->
+                    _Staffname.value = staff.name ?: ""
+                    _staffOldPhoneNumber.value = staff.phoneNumber ?: ""
+                    _staffNewPhoneNumber.value = staff.newPhoneNumber ?: ""
+                    _staffRole.value = staff.role ?: ""
+                    _staffSalary.value = staff.salary ?: ""
+                    _staffRegistrationDate.value = staff.registrationDate ?: ""
+                    _staffTimeVariation.value = staff.timeVariation ?: ""
+                    _staffLeaveDays.value = staff.leaveDays ?: ""
+                    _staffWorkPlace.value = staff.workPlace
+                    isProfileLoading.value = false
+                },
+                onFailure = {
+                    isProfileLoading.value = false
+                }
+            )
+        }
+    }
+
+    // Update staff data
+    fun updateStaff(employeePhoneNumber: String) {
+        viewModelScope.launch {
+            isProfileLoading.value = true
+            val updatedStaff = AddStaffDataClass(
+                name = _Staffname.value,
+                phoneNumber = _staffOldPhoneNumber.value,
+                newPhoneNumber = _staffNewPhoneNumber.value,
+                role = _staffRole.value,
+                salary = _staffSalary.value,
+                registrationDate = _staffRegistrationDate.value,
+                timeVariation = _staffTimeVariation.value,
+                leaveDays = _staffLeaveDays.value,
+                workPlace = _staffWorkPlace.value
+            )
+            repository.updateStaff(
+                adminPhoneNumber = adminPhoneNumber,
+                employeePhoneNumber = employeePhoneNumber,
+                updatedStaff = updatedStaff,
+                onSuccess = {
+                    loadStaff(employeePhoneNumber)
+                    isProfileLoading.value = false
+                },
+                onFailure = {
+                    isProfileLoading.value = false
+                }
+            )
+        }
+    }
+
+    // employee expense:
+
+    private val _employeeExpense = MutableStateFlow<List<Expense>>(emptyList())
+    val employeeExpense: StateFlow<List<Expense>> = _employeeExpense
+
+    private val _loadingEmployeeExpense = MutableStateFlow(false)
+    val loadingEmployeeExpense: StateFlow<Boolean> = _loadingEmployeeExpense
+
+    fun getEmployeeExpense(
+        employee: List<ViewAllEmployeeDataClass>,
+        from: String,
+        to: String,
+        selectedMonth: String
+    ) {
+        viewModelScope.launch {
+            _loadingEmployeeExpense.value = true
+            repository.getEmployeeExpense(
+                selectedEmployees = employee,
+                adminPhoneNumber = adminPhoneNumber,
+                from = from,
+                to = to,
+                selectedMonth = selectedMonth,
+                onSuccess = { expenses ->
+                    _employeeExpense.value = expenses
+                    _loadingEmployeeExpense.value = false
+                },
+                onFailure = {
+                    _employeeExpense.value = emptyList()
+                    _loadingEmployeeExpense.value = false
+                }
+            )
+        }
+    }
 
 }

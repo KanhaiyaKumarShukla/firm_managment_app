@@ -44,12 +44,14 @@ data class EmployeeHomeScreenData(
 )
 
 data class Expense(
-    val moneyRaise: String,
-    val items: List<ExpenseItem>,
-    val remaining: String,
-    val selectedDate: String,
-    val employeeNumber:String
+    val moneyRaise: String = "",
+    val items: List<ExpenseItem> = emptyList(),
+    val remaining: String = "",
+    val selectedDate: String = "",
+    val employeeNumber: String = "",
+    val status: Boolean = false
 )
+
 
 data class ExpenseItem(
     val name:String,

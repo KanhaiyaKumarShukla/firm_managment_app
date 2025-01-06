@@ -1,6 +1,11 @@
 package com.rach.firmmanagement.HomeScreen
 
+import android.annotation.SuppressLint
+import android.app.DatePickerDialog
+import java.util.Calendar
+import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,9 +16,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.AlertDialog
+import androidx.compose.material.DropdownMenu
+import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material3.Button
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -21,6 +31,8 @@ import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -53,6 +65,14 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.DpOffset
+import com.rach.firmmanagement.HomeScreen.ProfileOutlinedTextField
+import com.rach.firmmanagement.dataClassImp.GeofenceItems
+import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
+import com.rach.firmmanagement.viewModel.AdminViewModel
+import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
+import com.rach.firmmanagement.viewModel.GeofenceViewModel
 
 
 @Composable
@@ -204,10 +224,257 @@ fun ProfileScreen(
                         fieldToEdit = "Email"
                         updatedValue = email
                         isDialogOpen = true
-                    })
+                    }
+                )
             }
         }
     }
+}
+
+@SuppressLint("DefaultLocale")
+@Composable
+fun EmployeeProfileEditableScreen(
+    adminViewModel: AdminViewModel=viewModel(),
+    employee: ViewAllEmployeeDataClass,
+    geofenceViewModel: GeofenceViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+
+){
+
+    val isProfileLoading by adminViewModel.isProfileLoading
+    val staffName by adminViewModel.staffName.collectAsState()
+    val staffPhoneNumber by adminViewModel.staffNewPhoneNumber.collectAsState()
+    val staffRole by adminViewModel.staffRole.collectAsState()
+    val staffSalary by adminViewModel.staffSalary.collectAsState()
+    val staffRegistrationDate by adminViewModel.staffRegistrationDate.collectAsState()
+    val staffTimeVariation by adminViewModel.staffTimeVariation.collectAsState()
+    val staffLeaveDays by adminViewModel.staffLeaveDays.collectAsState()
+    val staffWorkPlace by adminViewModel.staffWorkPlace.collectAsState()
+
+    var isDialogOpen by remember { mutableStateOf(false) }
+    var isDialogForWorkPlaceOpen by remember { mutableStateOf(false) }
+    var fieldToEdit by remember { mutableStateOf("") }
+    var updatedValue by remember { mutableStateOf("") }
+    var isDatePickerOpen by remember { mutableStateOf(false) } // State for date picker
+
+    val geofences by geofenceViewModel.geofences.collectAsState()
+
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        scope.launch {
+            adminViewModel.loadStaff(employee.phoneNumber.toString())
+            geofenceViewModel.fetchAllGeofences()
+        }
+    }
+
+    if (isDatePickerOpen) {
+        val calendar = Calendar.getInstance()
+
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH)
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+        val context = LocalContext.current
+
+        DatePickerDialog(
+            context,
+            { _, selectedYear, selectedMonth, selectedDay ->
+                // Format the selected date
+                val selectedDate = String.format("%02d/%02d/%04d", selectedDay, selectedMonth + 1, selectedYear)
+                adminViewModel.onChangeStaffRegistrationDate(selectedDate)
+                adminViewModel.updateStaff(employee.phoneNumber.toString())
+                isDatePickerOpen = false
+            },
+            year,
+            month,
+            day
+        ).show()
+    }
+
+
+    //change
+    if (isDialogOpen) {
+        EditDialog(
+            fieldName = fieldToEdit,
+            initialValue = updatedValue,
+            onConfirm = {
+                when (fieldToEdit) {
+                    "Name" -> adminViewModel.onChangeStaffName(it)
+                    "PhoneNumber" -> adminViewModel.onChangeStaffPhoneNumber(it)
+                    "Role" -> adminViewModel.onChangeStaffRole(it)
+                    "Salary" -> adminViewModel.onChangeStaffSalary(it)
+                    "RegistrationDate" -> adminViewModel.onChangeStaffRegistrationDate(it)
+                    "TimeVariation" -> adminViewModel.onChangeStaffTimeVariation(it)
+                    "LeaveDays" -> adminViewModel.onChangeStaffLeaveDays(it)
+                }
+                adminViewModel.updateStaff(employee.phoneNumber.toString())
+                isDialogOpen = false
+            },
+            onDismiss = {
+                isDialogOpen = false
+            }
+        )
+    }
+    if(isDialogForWorkPlaceOpen){
+        EditDialogForGeoFence(
+            fieldName="WorkPlace",
+            initialValue = staffWorkPlace,
+            geofences = geofences,
+            onConfirm = {
+                adminViewModel.onChangeStaffWorkPlace(it)
+                adminViewModel.updateStaff(employee.phoneNumber.toString())
+                isDialogForWorkPlaceOpen = false
+            },
+            onDismiss = {
+                isDialogForWorkPlaceOpen = false
+            }
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        if (isProfileLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start = 20.dp, end = 20.dp,
+                        top = 20.dp
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.about),
+                    contentDescription = "logo",
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+
+                Text(text = staffName, fontSize = 20.sp, style = fontBablooBold)
+
+                Spacer(modifier = Modifier.height(15.dp))
+
+                // Name Field
+                ProfileOutlinedTextField(value = staffName,
+                    label = "Name",
+                    //change
+                    // onValueChange = { profileViewModel.onChangeName(it) },
+                    onValueChange = { updatedValue = it },
+                    isEditing = false,
+                    onEditClick = {
+                        fieldToEdit = "Name"
+                        updatedValue = staffName
+                        isDialogOpen = true
+                    })
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // PhoneNumber Field
+                ProfileOutlinedTextField(value = staffPhoneNumber,
+                    label = "PhoneNumber",
+                    // change
+                    // onValueChange = { profileViewModel.onChangePhoneNumber(it) },
+                    onValueChange = { updatedValue = it },
+                    isEditing = false,
+                    onEditClick = {
+                        fieldToEdit = "PhoneNumber"
+                        updatedValue = staffPhoneNumber
+                        isDialogOpen = true
+                    })
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Firm Name Field
+                ProfileOutlinedTextField(value = staffRole,
+                    label = "Role",
+                    //onValueChange = { profileViewModel.onChangeFirmName(it) },
+                    onValueChange = { updatedValue = it },
+                    isEditing = false,
+                    onEditClick = {
+                        fieldToEdit = "Role"
+                        updatedValue = staffRole
+                        isDialogOpen = true
+                    })
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Address Field
+                ProfileOutlinedTextField(value = staffSalary, label = "Salary",
+                    //onValueChange = { profileViewModel.onChangeAddress(it) },
+                    onValueChange = { updatedValue = it },
+                    isEditing = false,
+                    onEditClick = {
+                        fieldToEdit = "Salary"
+                        updatedValue = staffSalary
+                        isDialogOpen = true
+                    })
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Date of Birth Field
+                ProfileOutlinedTextField(value = staffRegistrationDate, label = "RegistrationDate",
+                    // onValueChange = { profileViewModel.onChangeEmail(it) },
+                    onValueChange = { updatedValue = it },
+                    isEditing = false,
+                    onEditClick = {
+                        fieldToEdit = "RegistrationDate"
+                        updatedValue = staffRegistrationDate
+                        isDatePickerOpen = true
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Date of Birth Field
+                ProfileOutlinedTextField(value = staffTimeVariation, label = "TimeVariation",
+                    // onValueChange = { profileViewModel.onChangeEmail(it) },
+                    onValueChange = { updatedValue = it },
+                    isEditing = false,
+                    onEditClick = {
+                        fieldToEdit = "TimeVariation"
+                        updatedValue = staffTimeVariation
+                        isDialogOpen = true
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Date of Birth Field
+                ProfileOutlinedTextField(value = staffLeaveDays, label = "LeaveDays",
+                    // onValueChange = { profileViewModel.onChangeEmail(it) },
+                    onValueChange = { updatedValue = it },
+                    isEditing = false,
+                    onEditClick = {
+                        fieldToEdit = "LeaveDays"
+                        updatedValue = staffLeaveDays
+                        isDialogOpen = true
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                ProfileOutlinedTextField(value = staffWorkPlace.title.toString(), label = "WorkPlace",
+                    onValueChange = { },
+                    isEditing = false,
+                    onEditClick = {
+                        fieldToEdit = "WorkPlace"
+                        //updatedValue = staffWorkPlace
+                        isDialogForWorkPlaceOpen = true
+                    }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+            }
+        }
+    }
+
+
 }
 
 // change
@@ -262,6 +529,97 @@ fun EditDialog(
 
 }
 // change end
+@Composable
+fun EditDialogForGeoFence(
+    fieldName: String,
+    initialValue: GeofenceItems,
+    geofences: List<GeofenceItems>, // Replace `GeofenceItem` with your actual model class
+    onConfirm: (GeofenceItems) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var textFieldValue by remember { mutableStateOf(initialValue) }
+    var expanded by remember { mutableStateOf(false) }
+    var selectedGeofence by remember { mutableStateOf(GeofenceItems()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Add $fieldName") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = selectedGeofence.title.toString(),
+                        onValueChange = { },
+                        label = { Text("Select Geofence") },
+                        readOnly = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                expanded = true
+                                Log.d("Geofence", "Geofence dropdown clicked: $geofences")
+                            }
+                    )
+                    Box {
+                        IconButton(onClick = { expanded = !expanded }) {
+                            Icon(
+                                imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowLeft,
+                                contentDescription = "Expand"
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            offset = DpOffset(x = 0.dp, y = 0.dp)
+                        ) {
+                            geofences.forEach { geofenceItem ->
+                                Log.d("Geofence", "Geofence item: $geofenceItem")
+                                DropdownMenuItem(
+                                    onClick = {
+                                        selectedGeofence = geofenceItem ?: GeofenceItems()
+                                        expanded = false
+                                    }
+                                ) {
+                                    Text(text = geofenceItem.title ?: "Unknown")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        buttons = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .height(40.dp)
+                        .padding(end = 8.dp),
+                    shape = RoundedCornerShape(7.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+                ) {
+                    Text("Cancel", fontSize = 12.sp, color = Color.White)
+                }
+                Button(
+                    onClick = { onConfirm(selectedGeofence) },
+                    modifier = Modifier.height(40.dp),
+                    shape = RoundedCornerShape(7.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+                ) {
+                    Text("Save", fontSize = 12.sp, color = Color.White)
+                }
+            }
+        }
+    )
+}
+
 
 
 @Composable

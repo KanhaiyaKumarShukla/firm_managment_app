@@ -1,10 +1,13 @@
 package com.rach.firmmanagement.repository
 
+import android.annotation.SuppressLint
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.SetOptions
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
@@ -17,6 +20,8 @@ import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.YearMonth
 import java.util.Calendar
 import java.util.Locale
 
@@ -277,6 +282,35 @@ class AdminRepository {
         }
         return taskList
     }
+    suspend fun loadOneEmployeeTask(
+        adminPhoneNumber: String,
+        employee: ViewAllEmployeeDataClass
+    ): List<AddTaskDataClass> {
+
+        val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
+        val taskList = mutableListOf<AddTaskDataClass>()
+        val employeeTasksData = database.collection("Members")
+            .document(updateAdminNumber)
+            .collection("Employee")
+            .document(employee.phoneNumber.toString())
+            .collection("Task")
+            .get()
+            .await()
+        if (!employeeTasksData.isEmpty) {
+            Log.d("Task", "not empty")
+            val employeeTasks = employeeTasksData.documents.mapNotNull { document ->
+                document.toObject(AddTaskDataClass::class.java)?.copy(id = document.id)
+            }
+            taskList.addAll(employeeTasks)
+            Log.d("Task", "$taskList")
+        }
+        return taskList
+    }
+
 
     suspend fun deleteTask(adminPhoneNumber: String, task: AddTaskDataClass) {
         val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
@@ -466,7 +500,7 @@ class AdminRepository {
                 "+91$adminPhoneNumber"
             }
             val attendanceList = mutableListOf<PunchInPunchOut>()
-            Log.d("Attendance", "Fetching attendance for: $selectedEmployees, $from, $to, $selectedMonth")
+            Log.d("Attendance", "Fetching attendance for: $selectedEmployees, From: $from, To: $to, Month: $selectedMonth")
             if(selectedMonth.isEmpty()){
                 val fromDate = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).parse(from)
                 val toDate = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).parse(to)
@@ -541,5 +575,270 @@ class AdminRepository {
             onFailure()
         }
     }
+
+    // employee profile
+    suspend fun getStaff(
+        adminPhoneNumber: String,
+        employeePhoneNumber: String,
+        onSuccess: (AddStaffDataClass) -> Unit,
+        onFailure: () -> Unit
+    ) {
+        try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+            val documentSnapshot = database.collection("Members")
+                .document(updateAdminNumber)
+                .collection("Employee")
+                .document(employeePhoneNumber)
+                .get()
+                .await()
+
+            val staff = documentSnapshot.toObject(AddStaffDataClass::class.java)
+            if (staff != null) {
+                Log.d("Staff", "Staff fetched successfully: $staff")
+                onSuccess(staff)
+            } else {
+                Log.d("Staff", "Staff not found")
+                onFailure()
+            }
+        } catch (_: Exception) {
+            Log.d("Staff", "Staff fetch failed")
+            onFailure()
+        }
+    }
+
+    suspend fun updateStaff(
+        adminPhoneNumber: String,
+        employeePhoneNumber: String,
+        updatedStaff: AddStaffDataClass,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+            database.collection("Members")
+                .document(updateAdminNumber)
+                .collection("Employee")
+                .document(employeePhoneNumber)
+                .set(updatedStaff)
+                .await()
+            Log.d("Staff", "Staff updated successfully")
+            onSuccess()
+        } catch (_: Exception) {
+            Log.d("Staff", "Staff update failed")
+            onFailure()
+        }
+    }
+
+    /*
+    @SuppressLint("NewApi")
+    suspend fun getEmployeeExpense(
+        employeePhoneNumber: String?,
+        adminPhoneNumber:String,
+        from: String,
+        to: String,
+        selectedMonth: String,
+        onSuccess: (List<Expense>) -> Unit,
+        onFailure: () -> Unit
+    ) {
+        if (employeePhoneNumber.isNullOrEmpty()) {
+            onFailure()
+            return
+        }
+        try {
+            val allExpenses = mutableListOf<Expense>()
+
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+
+            if (selectedMonth.isNotEmpty()) {
+                val (month, year) = selectedMonth.split(" ")
+
+                val monthDocRef = database.collection("Members")
+                    .document(updateAdminNumber)
+                    .collection("Employee")
+                    .document(employeePhoneNumber)
+                    .collection("Expense")
+                    .document(year)
+                    .collection(month)
+
+                val dateDocuments = monthDocRef.get().await()
+                processDateDocuments(dateDocuments, allExpenses)
+            } else {
+                val fromDate = LocalDate.parse(from)
+                val toDate = LocalDate.parse(to)
+
+                val startYearMonth = YearMonth.from(fromDate)
+                val endYearMonth = YearMonth.from(toDate)
+
+                var currentYearMonth = startYearMonth
+                while (!currentYearMonth.isAfter(endYearMonth)) {
+                    val year = currentYearMonth.year.toString()
+                    val month = currentYearMonth.monthValue.toString().padStart(2, '0')
+
+                    val monthDocRef = database.collection("Members")
+                        .document(updateAdminNumber)
+                        .collection("Employee")
+                        .document(employeePhoneNumber)
+                        .collection("Expense")
+                        .document(year)
+                        .collection(month)
+
+                    val dateDocuments = monthDocRef.get().await()
+                    processDateDocuments(dateDocuments, allExpenses)
+
+                    currentYearMonth = currentYearMonth.plusMonths(1)
+                }
+            }
+
+            onSuccess(allExpenses)
+        } catch (e: Exception) {
+            Log.d("ExpensesData", "Error in getEmployeeExpense: ${e.message}")
+            onFailure()
+        }
+    }
+    */
+
+
+    suspend fun getEmployeeExpense(
+        adminPhoneNumber: String,
+        selectedEmployees: List<ViewAllEmployeeDataClass>,
+        from: String,
+        to: String,
+        selectedMonth: String,
+        onSuccess: (List<Expense>) -> Unit,
+        onFailure: () -> Unit
+    ) {
+        try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+            val attendanceList = mutableListOf<Expense>()
+            Log.d("Attendance", "Fetching attendance for: $selectedEmployees, From: $from, To: $to, Month: $selectedMonth")
+
+            if (selectedMonth.isEmpty()) {
+                val fromDate = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).parse(from)
+                val toDate = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).parse(to)
+                val calendar = Calendar.getInstance()
+
+                for (employee in selectedEmployees) {
+                    calendar.time = fromDate
+
+                    while (calendar.time <= toDate) {
+                        val targetYear = calendar.get(Calendar.YEAR).toString()
+                        val targetMonth = SimpleDateFormat("MMM", Locale.getDefault()).format(calendar.time)
+                        val targetDate = SimpleDateFormat("d-M-yyyy", Locale.getDefault()).format(calendar.time)
+
+                        val entriesSnapshot = database.collection("Members")
+                            .document(updateAdminNumber)
+                            .collection("Employee")
+                            .document(employee.phoneNumber.toString())
+                            .collection("Expense")
+                            .document(targetYear)
+                            .collection(targetMonth)
+                            .document(targetDate)
+                            .collection("Entries")
+                            .get()
+                            .await()
+
+                        for (entryDoc in entriesSnapshot.documents) {
+                            val data = entryDoc.data
+                            if (data != null) {
+                                val expense = Expense(
+                                    employeeNumber = data["employeeNumber"] as? String ?: "",
+                                    items = (data["items"] as? List<Map<String, Any>>)?.map {
+                                        ExpenseItem(
+                                            name = it["name"] as? String ?: "",
+                                            value = it["value"] as? String ?: ""
+                                        )
+                                    } ?: emptyList(),
+                                    moneyRaise = data["moneyRaise"] as? String ?: "",
+                                    remaining = data["remaining"] as? String ?: "",
+                                    selectedDate = data["selectedDate"] as? String ?: ""
+                                )
+                                attendanceList.add(expense)
+                            }
+                        }
+
+                        calendar.add(Calendar.DATE, 1)
+                    }
+                }
+            } else {
+                val parts = selectedMonth.split(" ")
+                val targetMonth = parts[0]
+                val targetYear = parts[1]
+
+                for (employee in selectedEmployees) {
+                    val yearDocRef = database.collection("Members")
+                        .document(updateAdminNumber)
+                        .collection("Employee")
+                        .document(employee.phoneNumber.toString())
+                        .collection("Expense")
+                        .document(targetYear)
+
+                    Log.d("Attendance", "Year Doc Ref: ${yearDocRef.path}")
+
+                    val monthDocSnapshot = yearDocRef.collection(targetMonth)
+                        .get()
+                        .await()
+
+                    Log.d("Attendance", "Month Doc Snapshot: ${monthDocSnapshot.documents}")
+                    processDateDocuments(monthDocSnapshot, attendanceList)
+                }
+            }
+
+            Log.d("Attendance", "Final list: $attendanceList")
+            onSuccess(attendanceList)
+
+        } catch (e: Exception) {
+            Log.e("Attendance", "Error fetching expenses: ${e.message}", e)
+            onFailure()
+        }
+    }
+
+    private suspend fun processDateDocuments(
+        dateDocuments: QuerySnapshot,
+        allExpenses: MutableList<Expense>
+    ) {
+        for (dateDoc in dateDocuments.documents) {
+            try {
+                val entries = dateDoc.reference.collection("Entries").get().await()
+                for (entryDoc in entries.documents) {
+                    val data = entryDoc.data
+                    if (data != null) {
+                        val expense = Expense(
+                            employeeNumber = data["employeeNumber"] as? String ?: "",
+                            items = (data["items"] as? List<Map<String, Any>>)?.map {
+                                ExpenseItem(
+                                    name = it["name"] as? String ?: "",
+                                    value = it["value"] as? String ?: ""
+                                )
+                            } ?: emptyList(),
+                            moneyRaise = data["moneyRaise"] as? String ?: "",
+                            remaining = data["remaining"] as? String ?: "",
+                            selectedDate = data["selectedDate"] as? String ?: ""
+                        )
+                        allExpenses.add(expense)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("Attendance", "Error processing date document: ${e.message}", e)
+            }
+        }
+    }
+
+
 
 }

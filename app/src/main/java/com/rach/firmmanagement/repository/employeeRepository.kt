@@ -278,6 +278,7 @@ class EmployeeRepository(
     private val todayDate = date.replace('/', '-')
 
     private val tag = "TAG"
+    /*
     suspend fun raiseExpense(
         adminPhoneNumber: String,
         expense: Expense,
@@ -332,6 +333,67 @@ class EmployeeRepository(
 
         } catch (e: Exception) {
             Log.d(tag, "Failed to punchIn- ${e.message}")
+            onFailure()
+        }
+    }
+
+    */
+
+    suspend fun raiseExpense(
+        adminPhoneNumber: String,
+        expense: Expense,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+
+        try {
+            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+                adminPhoneNumber
+            } else {
+                "+91$adminPhoneNumber"
+            }
+
+            val yearDocRef = database.collection("Members")
+                .document(updateAdminNumber)
+                .collection("Employee")
+                .document(employeeNumber)
+                .collection("Expense")
+                .document("$currentYear")
+
+            val monthDocRef = yearDocRef.collection(currentMonth).document(todayDate) // Assuming `todayDate` is unique per day
+
+// Ensure year and month documents exist
+            yearDocRef.set(mapOf("created" to true)) // Placeholder field for the year document
+                .addOnSuccessListener {
+                    Log.d("expense", "Year document $currentYear created successfully.")
+
+                    monthDocRef.set(mapOf("created" to true)) // Placeholder field for the month document
+                        .addOnSuccessListener {
+                            Log.d("expense", "Month document $currentMonth created successfully.")
+
+                            // Now add the subcollection data
+                            val collectionRef = monthDocRef.collection("Entries")
+                            collectionRef.document(Timestamp.now().seconds.toString()).set(expense)
+                                .addOnSuccessListener {
+                                    onSuccess()
+                                    Log.d("expense", "Document with timestamp $expense added successfully!")
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.d("expense", "Error adding document: ${e.message}")
+                                    onFailure()
+                                }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.d("expense", "Error creating month document: ${e.message}")
+                        }
+                }
+                .addOnFailureListener { e ->
+                    Log.d("expense", "Error creating year document: ${e.message}")
+                }
+
+
+        }catch (e:Exception){
+            Log.d("expense", "Failed to punchIn- ${e.message}")
             onFailure()
         }
     }

@@ -9,6 +9,7 @@ sealed class ScreenAdmin(val route: String) {
     object AddHoliday : ScreenAdmin("Add Holiday")
     object ViewEmployee : ScreenAdmin("View Employee")
     object ViewAllTask : ScreenAdmin("ViewAllTask")
+    object AllEmployeeAttendance: ScreenAdmin("All Employee Attendance")
     object EmployeeAttendance:ScreenAdmin("Employee Attended")
     object AddTask :ScreenAdmin("Add task")
     object AllExpenses: ScreenAdmin("All Expenses")
@@ -16,5 +17,8 @@ sealed class ScreenAdmin(val route: String) {
     object AddGeofenceByMap : ScreenAdmin("Add Geofence By Map")
     object HolidayTabMenu : ScreenAdmin( "Holiday Tab Menu")
     object WorkHours: ScreenAdmin("Work Hours")
+    object ViewOneEmployeeTask: ScreenAdmin("One Employee Task")
+    object EmployeeProfile: ScreenAdmin("Employee Profile")
+    object EmployeeExpense:ScreenAdmin("Employee Task")
 
 }

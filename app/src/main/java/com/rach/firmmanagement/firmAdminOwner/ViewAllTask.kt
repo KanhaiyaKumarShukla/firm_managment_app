@@ -3,14 +3,17 @@ package com.rach.firmmanagement.firmAdminOwner
 import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +50,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.Remark
+import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.employee.AddRemarkDialog
 import com.rach.firmmanagement.employee.RemarksListDialog
 import com.rach.firmmanagement.ui.theme.blueAcha
@@ -78,6 +82,62 @@ fun ViewAllTask(
 
     if (loading.value or employeeLoading) { // Use .value for State objects
         CircularProgressIndicator()
+    } else {
+        LazyColumn {
+            items(tasks.value) { item -> // Access .value for the list
+                ViewAllTaskDesign(
+                    item = item,
+                    onAddRemark = { remark ->
+                        adminViewModel.addRemark(
+                            isCommon = item.isCommon,
+                            taskId = item.id,
+                            employeePhone = item.employeePhoneNumber,
+                            newRemark = remark,
+                            onSuccess = {
+                                Log.d("TAG", "Remark added successfully")
+                            },
+                            onFailure = {
+                                Log.d("TAG", "Failed to add remark")
+                            }
+                        )
+                    },
+                    fetchRemarks = {
+                        adminViewModel.fetchRemarks(
+                            isCommon = item.isCommon,
+                            taskId = item.id,
+                            employeePhone = item.employeePhoneNumber
+                        )
+                    },
+                    onDeleteClick = {
+                        adminViewModel.deleteTask(item)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ViewOneEmployeeTask(
+    adminViewModel: AdminViewModel= viewModel(),
+    employee: ViewAllEmployeeDataClass
+){
+    val tasks = adminViewModel.oneEmployeeTask.collectAsState()
+    val loading = adminViewModel.loading.collectAsState()
+    LaunchedEffect(Unit) {
+        adminViewModel.loadOneEmployeeTask(employee)
+    }
+    if (loading.value) { // Use .value for State objects
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
     } else {
         LazyColumn {
             items(tasks.value) { item -> // Access .value for the list

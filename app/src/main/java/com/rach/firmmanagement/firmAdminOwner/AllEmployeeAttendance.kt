@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
+import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.employee.EmployAttendance
 import com.rach.firmmanagement.firmAdminOwner.ScreenAdmin.EmployeeAttendance
 import com.rach.firmmanagement.firmAdminOwner.ui.theme.FirmManagementTheme
@@ -87,6 +88,8 @@ fun AllEmployeeAttendance(loginViewModel: LoginViewModel=LoginViewModel(), emplo
     }
 }
 */
+
+/*
 @Composable
 fun AllEmployeeAttendance(
     allEmployeeViewModel: AllEmployeeViewModel = viewModel(),
@@ -268,6 +271,203 @@ fun AllEmployeeAttendance(
         )
     }
 }
+
+ */
+
+@Composable
+fun EmployeeAttendance(
+    selectedEmployees: Set<ViewAllEmployeeDataClass>,
+    attendanceData: List<PunchInPunchOut>,
+    fromDate: String,
+    toDate: String,
+    selectedMonth: String,
+    attendanceLoading: Boolean,
+    onFetchAttendance: (Set<ViewAllEmployeeDataClass>, String, String, String) -> Unit,
+    onMonthChange: (String) -> Unit,
+    onDateRangeChange: (String, String) -> Unit
+) {
+    val showMonthPickerDialog = remember { mutableStateOf(false) }
+    val showDateRangePickerDialog = remember { mutableStateOf(false) }
+
+    if (attendanceLoading) { // Use .value for State objects
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
+    }else {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            // Date Selection
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Select Month
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showMonthPickerDialog.value = true }
+                ) {
+                    OutlinedTextField(
+                        value = selectedMonth,
+                        onValueChange = {},
+                        label = { Text("By Month") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(onClick = { showMonthPickerDialog.value = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Date Picker"
+                                )
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(5.dp))
+
+                CustomButton(
+                    onClick = {
+                        onFetchAttendance(selectedEmployees, selectedMonth, "", "")
+                    },
+                    text = "Search"
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Select Date Range
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showDateRangePickerDialog.value = true }
+                ) {
+                    OutlinedTextField(
+                        value = "$fromDate to $toDate",
+                        onValueChange = {},
+                        label = { Text("By Date Range") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(onClick = { showDateRangePickerDialog.value = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Date Picker"
+                                )
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(5.dp))
+
+                CustomButton(
+                    onClick = {
+                        onFetchAttendance(selectedEmployees, "", fromDate, toDate)
+                    },
+                    text = "Search"
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Attendance Table
+            AttendanceTable(attendanceData)
+
+            // Month Picker Dialog
+            if (showMonthPickerDialog.value) {
+                showMonthPicker(
+                    onMonthSelected = { selected ->
+                        onMonthChange(selected)
+                        showMonthPickerDialog.value = false
+                    },
+                    onDismissRequest = { showMonthPickerDialog.value = false }
+                )
+            }
+
+            // Date Range Picker Dialog
+            if (showDateRangePickerDialog.value) {
+                showDateRangePicker(
+                    onRangeSelected = { from, to ->
+                        onDateRangeChange(from, to)
+                        showDateRangePickerDialog.value = false
+                    },
+                    onDismissRequest = { showDateRangePickerDialog.value = false }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AllEmployeeAttendance(
+    allEmployeeViewModel: AllEmployeeViewModel = viewModel(),
+    adminViewModel: AdminViewModel = viewModel()
+) {
+    val employees by allEmployeeViewModel.employeeList
+    val selectedEmployees = remember { mutableStateOf(employees.toSet()) }
+    val fromDate by adminViewModel.fromDate.collectAsState()
+    val toDate by adminViewModel.toDate.collectAsState()
+    val attendanceData by adminViewModel.attendance.collectAsState()
+    val selectedMonth by adminViewModel.selectedMonth.collectAsState()
+    val attendanceLoading by adminViewModel.loading.collectAsState()
+
+    LaunchedEffect(employees) {
+        selectedEmployees.value = employees.toSet()
+        adminViewModel.fetchAttendance(
+            selectedEmployees = selectedEmployees.value.toList(),
+            from = fromDate,
+            to = toDate,
+            selectedMonth = ""
+        )
+    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Employee Selection
+        EmployeeSelection(
+            employees = employees,
+            selectedEmployees = selectedEmployees
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Employee Attendance
+        EmployeeAttendance(
+            selectedEmployees = selectedEmployees.value,
+            attendanceData = attendanceData,
+            fromDate = fromDate,
+            toDate = toDate,
+            selectedMonth = selectedMonth,
+            attendanceLoading=attendanceLoading,
+            onFetchAttendance = { selectedEmployees, selectedMonth, from, to ->
+                Log.d("Attendance", "Fetch: $selectedEmployees, $selectedMonth, $from, $to")
+                adminViewModel.fetchAttendance(
+                    selectedEmployees = selectedEmployees.toList(),
+                    selectedMonth = selectedMonth,
+                    from = from,
+                    to = to
+                )
+            },
+            onMonthChange = { selected ->
+                adminViewModel.onChangeSelectedMonth(selected)
+            },
+            onDateRangeChange = { from, to ->
+                adminViewModel.onChangeAttendanceFromDate(from)
+                adminViewModel.onChangeAttendanceToDate(to)
+            }
+        )
+    }
+}
+
 
 @Composable
 fun DateSelection(
