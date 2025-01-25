@@ -678,14 +678,15 @@ class AdminViewModel() : ViewModel() {
                     onSuccess = {
                         if(selectedEmployees.size==1) {
                             fetchMessages(employee.phoneNumber.toString())
-                        }else{
-                            _messages.value =listOf(message) + _messages.value
                         }
                     },
                     onFailure = {
                         Log.e("Chat", "Failed to send message to ${employee.phoneNumber}")
                     }
                 )
+            }
+            if(selectedEmployees.size>1 && messagesListener==null){
+                _messages.value =listOf(message) + _messages.value
             }
         }
     }
