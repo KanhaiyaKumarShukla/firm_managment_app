@@ -73,7 +73,6 @@ fun AddGeofence(viewModel: GeofenceViewModel=viewModel(), navigateToAddGeofenceB
                     style = fontPoppinsMedium
                 )
 
-
                 Spacer(modifier = Modifier.height(20.dp))
 
                 OutlinedTextField(

@@ -371,9 +371,9 @@ fun AdminPanelScreen(
     navigateToTask: () -> Unit,
     navigateToEmployeeAttendance: () -> Unit,
     navigateToAllExpense: () -> Unit,
-    navigateToAddGeofence: () -> Unit
+    navigateToAddGeofence: () -> Unit,
+    navigateToChatScreen: () -> Unit
 ) {
-
 
     val scrollState = rememberScrollState()
     val scaffoldState = rememberScaffoldState()
@@ -466,6 +466,13 @@ fun AdminPanelScreen(
                 drawableRes = R.drawable.location_icon,  // Settings icon for app settings
                 onClick = { navigateToAddGeofence() }
             )
+
+            OptionCard(
+                title = "Chatting",
+                description = "Chat With Employee",
+                drawableRes = R.drawable.chat_icon,  // Settings icon for app settings
+                onClick = { navigateToChatScreen() }
+            )
         }
 
     }
@@ -551,7 +558,7 @@ fun OptionCard(
 @Composable
 fun NoDij() {
     FirmManagementTheme {
-        AdminPanelScreen({}, {}, {}, {}, {}, {}, {}, {}, {})
+        AdminPanelScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {})
     }
 }
 

@@ -1,5 +1,6 @@
 package com.rach.firmmanagement.navigation
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -10,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -20,20 +22,27 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.rach.firmmanagement.HomeScreen.AdminPanelScreen
 import com.rach.firmmanagement.HomeScreen.EmployeeProfileEditableScreen
+import com.rach.firmmanagement.HomeScreen.ScreensManage
+import com.rach.firmmanagement.dataClassImp.MessageDataClass
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
+import com.rach.firmmanagement.employee.ChatScreen
 import com.rach.firmmanagement.firmAdminOwner.AddGeofence
 import com.rach.firmmanagement.firmAdminOwner.AddGeofenceByMap
 import com.rach.firmmanagement.firmAdminOwner.AddStaff
 import com.rach.firmmanagement.firmAdminOwner.AddTask
 import com.rach.firmmanagement.firmAdminOwner.AddWorkHoursScreen
+import com.rach.firmmanagement.firmAdminOwner.AdminChatScreen
+import com.rach.firmmanagement.firmAdminOwner.AdminMessageScreen
 import com.rach.firmmanagement.firmAdminOwner.AllEmployeeAttendance
 import com.rach.firmmanagement.firmAdminOwner.EmployeeAttendance
+import com.rach.firmmanagement.firmAdminOwner.EmployeeSalaryScreen
 import com.rach.firmmanagement.firmAdminOwner.Expense
 import com.rach.firmmanagement.firmAdminOwner.GetWorkHours
 import com.rach.firmmanagement.firmAdminOwner.HolidayAddScreen
 import com.rach.firmmanagement.firmAdminOwner.HolidayTabMenu
 import com.rach.firmmanagement.firmAdminOwner.ScreenAdmin
 import com.rach.firmmanagement.firmAdminOwner.ViewAllEmployee
+import com.rach.firmmanagement.firmAdminOwner.ViewAllEmployeeExpense
 import com.rach.firmmanagement.firmAdminOwner.ViewAllTask
 import com.rach.firmmanagement.firmAdminOwner.ViewEmployeeExpense
 import com.rach.firmmanagement.firmAdminOwner.ViewOneEmployeeTask
@@ -44,8 +53,10 @@ import com.rach.firmmanagement.viewModel.AddWorkHourViewModel
 import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.HolidayViewModel
+import com.rach.firmmanagement.viewModel.LoginViewModel
 import kotlinx.coroutines.launch
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Navigation2(){
@@ -54,6 +65,7 @@ fun Navigation2(){
     val emViewModel : AllEmployeeViewModel = viewModel()
     val adminViewModel:AdminViewModel = viewModel()
     val workHoursViewModel: AddWorkHourViewModel= viewModel()
+    val loginViewModel:LoginViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = ScreenAdmin.AdminPanel.route) {
 
@@ -67,7 +79,8 @@ fun Navigation2(){
                navigateToTask = {navController.navigate(ScreenAdmin.AddTask.route)},
                navigateToEmployeeAttendance={navController.navigate(ScreenAdmin.AllEmployeeAttendance.route)},
                navigateToAllExpense={navController.navigate(ScreenAdmin.AllExpenses.route)},
-               navigateToAddGeofence={navController.navigate(ScreenAdmin.AddGeofence.route)}
+               navigateToAddGeofence={navController.navigate(ScreenAdmin.AddGeofence.route)},
+               navigateToChatScreen={navController.navigate(ScreenAdmin.AdminChatScreen.route)}
            )
         }
 
@@ -104,7 +117,7 @@ fun Navigation2(){
         }
 
         composable(ScreenAdmin.AllExpenses.route){
-            Expense(viewModel=adminViewModel)
+            ViewAllEmployeeExpense(adminViewModel=adminViewModel)
         }
 
         composable(ScreenAdmin.AddGeofence.route){
@@ -240,7 +253,8 @@ fun Navigation2(){
                 onDateRangeChange = { from, to ->
                     adminViewModel.onChangeAttendanceFromDate(from)
                     adminViewModel.onChangeAttendanceToDate(to)
-                }
+                },
+                toShowOneEmployee = true
             )
         }
         composable(
@@ -299,6 +313,78 @@ fun Navigation2(){
 
             )
 
+        }
+
+        composable(ScreenAdmin.AdminChatScreen.route){
+            AdminChatScreen()
+        }
+        composable(
+            "${ScreenAdmin.AdminMessage.route}/{selectedEmployees}",
+            arguments = listOf(navArgument("selectedEmployees") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val selectedEmployeesJson = backStackEntry.arguments?.getString("selectedEmployees")
+            val selectedEmployees = Gson().fromJson(selectedEmployeesJson, Array<ViewAllEmployeeDataClass>::class.java).toSet()
+            Log.d("Chat", selectedEmployees.toString())
+            val inputMessage by adminViewModel.inputMessage.collectAsState()
+            val messages by adminViewModel.messages.collectAsState()
+            // Fetch messages when the screen loads
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(Unit) {
+                adminViewModel.fetchMessages(employeeNumber = selectedEmployees.first().phoneNumber.toString()) // Use actual admin phone number
+
+                onDispose {
+                    adminViewModel.stopListeningForMessages()
+                }
+            }
+            AdminMessageScreen(
+                messages = messages, // Replace with actual messages
+                employees = selectedEmployees.toList(),
+                selectedEmployees = remember { mutableStateOf(selectedEmployees) },
+                inputMessage = inputMessage,
+                employeeNumber = adminViewModel.adminPhoneNumber, // Replace with actual admin phone number
+                onMessageChange = {
+                    adminViewModel.onChangeMessage(it)
+                    Log.d("Chat", "change: $it")
+                },
+                onSendMessage = {
+                    if (inputMessage.isNotEmpty() && selectedEmployees.isNotEmpty()) {
+                        adminViewModel.sendMessage(
+                            selectedEmployees = selectedEmployees,
+                            message = MessageDataClass(
+                                senderName = adminViewModel.adminPhoneNumber,
+                                receiverName = selectedEmployees.first().phoneNumber.toString(),
+                                message = inputMessage,
+                                timestamp = System.currentTimeMillis()
+                            )
+                        )
+                        adminViewModel.onChangeMessage("")
+                    }
+                }
+            )
+        }
+        composable(ScreenAdmin.EmployeeChat.route){
+            ChatScreen(loginViewModel = loginViewModel)
+        }
+        composable(
+            "${ScreenAdmin.EmployeeSalary.route}/{selectedEmployeeJson}",
+            arguments = listOf(navArgument("selectedEmployeeJson") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployeeJson")
+            val selectedEmployee = Gson().fromJson(selectedEmployeeJson, ViewAllEmployeeDataClass::class.java)
+
+            val repository = HolidayRepository()
+            val viewModel: HolidayViewModel = viewModel(
+                factory = HolidayViewModelFactory(repository)
+            )
+            if (selectedEmployee != null) {
+                EmployeeSalaryScreen(
+                    employee = selectedEmployee,
+                    holidayViewModel = viewModel
+                )
+            } else {
+                // Handle error if employee data is null
+                Text("Error: Employee data not found")
+            }
         }
 
 

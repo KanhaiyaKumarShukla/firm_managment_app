@@ -82,6 +82,7 @@ fun AddGeofenceByMap(activity: ComponentActivity, viewModel: GeofenceViewModel =
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            Log.d("PermissionCheck", "ACCESS_FINE_LOCATION not granted, requesting permission")
             locationPermissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -89,6 +90,7 @@ fun AddGeofenceByMap(activity: ComponentActivity, viewModel: GeofenceViewModel =
                 )
             )
         } else {
+            Log.d("PermissionCheck", "ACCESS_FINE_LOCATION granted")
             hasLocationPermission = true
         }
 
@@ -111,10 +113,15 @@ fun AddGeofenceByMap(activity: ComponentActivity, viewModel: GeofenceViewModel =
         isBatteryOptimizationIgnored = powerManager.isIgnoringBatteryOptimizations(activity.packageName)
         if (!isBatteryOptimizationIgnored) {
             showBatteryOptimizationDialog = true
+            Log.d("PermissionCheck", "Battery optimization not ignored")
         }
 
     }
-
+    /*
+    * save power limits the background activities of apps when they are not actively in use.
+    * The system reduces an app's ability to perform background tasks like syncing data, sending/receiving updates, or maintaining location awareness.
+    * isIgnoringBatteryOptimizations() checks whether the app is excluded from battery optimization. If ignored, the app has unrestricted access to perform tasks in the background.
+    * */
     if (showBatteryOptimizationDialog) {
         AlertDialog(
             onDismissRequest = { showBatteryOptimizationDialog = false },
@@ -287,6 +294,7 @@ fun getSavedGeofences(context: Context): List<GeofenceItems> {
         )
     }
 }
+
 fun restoreGeofences(context: Context) {
     val savedGeofences = getSavedGeofences(context)
     val geofenceHelper = GeofenceHelper(context as Activity)

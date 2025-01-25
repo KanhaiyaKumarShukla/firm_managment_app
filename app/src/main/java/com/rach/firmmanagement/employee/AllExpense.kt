@@ -4,10 +4,15 @@ import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,9 +31,15 @@ import com.rach.firmmanagement.dataClassImp.ExpenseItem
 import com.rach.firmmanagement.viewModel.EmployeeViewModel1
 import com.rach.firmmanagement.viewModel.LoginViewModel
 import com.rach.firmmanagement.R
+import com.rach.firmmanagement.firmAdminOwner.CustomButton
+import com.rach.firmmanagement.firmAdminOwner.EmployeeExpense
+import com.rach.firmmanagement.firmAdminOwner.ExpenseDetailDialog
+import com.rach.firmmanagement.firmAdminOwner.showDateRangePicker
+import com.rach.firmmanagement.firmAdminOwner.showMonthPicker
+import com.rach.firmmanagement.ui.theme.blueAcha
 import java.text.SimpleDateFormat
 import java.util.*
-
+/*
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +98,218 @@ fun AllExpense(
     }
 }
 
+ */
+@SuppressLint("DefaultLocale")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AllExpense(
+    employeeViewModel: EmployeeViewModel1 = viewModel(),
+    loginViewModel: LoginViewModel
+){
+
+    var showDialog by remember { mutableStateOf(false) }
+
+    val employeeExpenses by employeeViewModel.employeeExpense.collectAsState(initial = emptyList())
+    val showMonthDialog = remember { mutableStateOf(false) }
+    val showDateRangePickerDialog = remember { mutableStateOf(false) }
+    var selectedExpense by remember { mutableStateOf<Expense?>(null) }
+    val expenseLoading by employeeViewModel.expenseLoading.collectAsState()
+    val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
+    val fromDate by employeeViewModel.fromDate.collectAsState()
+    val toDate by employeeViewModel.toDate.collectAsState()
+    val selectedMonth by employeeViewModel.selectedMonth1.collectAsState()
+
+    LaunchedEffect(Unit) {
+        employeeViewModel.fetchExpense(
+            adminPhoneNumber = adminPhoneNumber,
+            selectedMonth = selectedMonth,
+            from = "",
+            to = ""
+        )
+    }
+
+    if (expenseLoading) { // Use .value for State objects
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
+    }else {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Date Selection
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Select Month
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showMonthDialog.value = true }
+                ) {
+                    OutlinedTextField(
+                        value = selectedMonth,
+                        onValueChange = {},
+                        label = { Text("By Month") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(onClick = { showMonthDialog.value = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Date Picker"
+                                )
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(5.dp))
+
+                CustomButton(
+                    onClick = {
+                        employeeViewModel.fetchExpense(
+                            adminPhoneNumber = adminPhoneNumber,
+                            selectedMonth = selectedMonth,
+                            from = "",
+                            to = ""
+                        )
+                    },
+                    text = "Search"
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Select Date Range
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showDateRangePickerDialog.value = true }
+                ) {
+                    OutlinedTextField(
+                        value = "$fromDate to $toDate",
+                        onValueChange = {},
+                        label = { Text("By Date Range") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(onClick = { showDateRangePickerDialog.value = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Date Picker"
+                                )
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(5.dp))
+
+                CustomButton(
+                    onClick = {
+                        employeeViewModel.fetchExpense(
+                            adminPhoneNumber = adminPhoneNumber,
+                            selectedMonth = "",
+                            from = fromDate,
+                            to = toDate
+                        )
+                    },
+                    text = "Search"
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Date",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                )
+                Text(
+                    text = "Amount",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                )
+                Text(
+                    text = "Status",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                )
+
+            }
+
+            if (employeeExpenses.isEmpty()) {
+                NoDataFound(message = "No Data Found")
+            } else {
+
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(employeeExpenses) { expense ->
+                        EmployeeExpense(
+                            expense = expense,
+                            onClick = {
+                                selectedExpense = expense
+                                showDialog = true
+                            }
+                        )
+                    }
+                }
+            }
+
+
+            if (showDialog) {
+                selectedExpense?.let { expense ->
+                    ExpenseDetailDialog(
+                        expense = expense,
+                        onDismiss = {
+                            showDialog = false
+                        }
+                    )
+                }
+            }
+
+            // Month Picker Dialog
+            if (showMonthDialog.value) {
+                showMonthPicker(
+                    onMonthSelected = { selected ->
+                        employeeViewModel.onSelectedMonthChange(selected)
+                        showMonthDialog.value = false
+                    },
+                    onDismissRequest = { showMonthDialog.value = false }
+                )
+            }
+
+            // Date Range Picker Dialog
+            if (showDateRangePickerDialog.value) {
+                showDateRangePicker(
+                    onRangeSelected = { from, to ->
+                        employeeViewModel.onChangeFromDate(from)
+                        employeeViewModel.onChangeToDate(to)
+                        showDateRangePickerDialog.value = false
+                    },
+                    onDismissRequest = { showDateRangePickerDialog.value = false }
+                )
+            }
+        }
+    }
+}
 
 fun showMonthPickerDialog(context: Context, onDateSelected: (Int, Int) -> Unit) {
     val calendar = Calendar.getInstance()
@@ -201,12 +424,16 @@ fun ExpenseCard(expense: Expense) {
 
 @Composable
 fun AllExpenseList(expenses: List<Expense>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(expenses) { expense ->
-            ExpenseCard(expense = expense)
+    if(expenses.isEmpty()){
+        NoDataFound()
+    }else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(expenses) { expense ->
+                ExpenseCard(expense = expense)
+            }
         }
     }
 }

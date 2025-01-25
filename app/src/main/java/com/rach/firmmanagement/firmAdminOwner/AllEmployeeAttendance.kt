@@ -48,6 +48,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.employee.EmployAttendance
+import com.rach.firmmanagement.employee.NoDataFound
 import com.rach.firmmanagement.firmAdminOwner.ScreenAdmin.EmployeeAttendance
 import com.rach.firmmanagement.firmAdminOwner.ui.theme.FirmManagementTheme
 import com.rach.firmmanagement.necessaryItem.DatePickerHaiDialog
@@ -284,7 +285,8 @@ fun EmployeeAttendance(
     attendanceLoading: Boolean,
     onFetchAttendance: (Set<ViewAllEmployeeDataClass>, String, String, String) -> Unit,
     onMonthChange: (String) -> Unit,
-    onDateRangeChange: (String, String) -> Unit
+    onDateRangeChange: (String, String) -> Unit,
+    toShowOneEmployee: Boolean=false
 ) {
     val showMonthPickerDialog = remember { mutableStateOf(false) }
     val showDateRangePickerDialog = remember { mutableStateOf(false) }
@@ -380,9 +382,12 @@ fun EmployeeAttendance(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
+            if (attendanceData.isEmpty()) {
+                NoDataFound(message = "No Data Found")
+            } else{
             // Attendance Table
-            AttendanceTable(attendanceData)
+                AttendanceTable(attendanceData, toShowOneEmployee = toShowOneEmployee)
+            }
 
             // Month Picker Dialog
             if (showMonthPickerDialog.value) {
@@ -614,18 +619,21 @@ fun showDateRangePicker(
 
 @Composable
 fun AttendanceTable(
-    attendanceData: List<PunchInPunchOut>
+    attendanceData: List<PunchInPunchOut>,
+    toShowOneEmployee: Boolean=false
 ) {
     Column {
         // Header Row
         Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "Employee Name",
-                modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
-                textAlign = TextAlign.Center
-            )
+            if(!toShowOneEmployee) {
+                Text(
+                    text = "Employee Name",
+                    modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
             Text("Date",
                 modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
                 fontWeight = FontWeight.Bold,
@@ -645,11 +653,14 @@ fun AttendanceTable(
         // Data Rows
         attendanceData.forEach { attendance ->
             Row(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    attendance.name ?: "",
-                    modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
-                    textAlign = TextAlign.Center
-                )
+                if(!toShowOneEmployee) {
+                    Text(
+                        attendance.name ?: "",
+                        modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
                 Text(
                     attendance.date ?: "", modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
                     textAlign = TextAlign.Center

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,13 +69,23 @@ fun SeeTasks(
     }
 
     if (isLoading) {
+
         Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
         ) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
         }
-    } else {
+
+    }else if(tasks.isEmpty()){
+
+        NoDataFound()
+
+    }else {
         LazyColumn {
             items(tasks) { item ->
 
@@ -102,6 +113,14 @@ fun SeeTasks(
                             isCommon = item.isCommon,
                             taskId = item.id
                         )
+                    },
+                    addRealtimeRemarksListener = { onRemarksUpdated ->
+                        viewModel.addRealtimeRemarksListener(
+                            adminPhoneNumber = adminPhoneNumber,
+                            employeePhone = item.employeePhoneNumber,
+                            taskId = item.id,
+                            onRemarksUpdated = onRemarksUpdated
+                        )
                     }
                 )
             }
@@ -113,21 +132,25 @@ fun SeeTasks(
 fun SeeTasksDesign(
     item: AddTaskDataClass,
     onAddRemark: (String) -> Unit,
-    fetchRemarks: suspend () -> List<Remark>
+    fetchRemarks: suspend () -> List<Remark>,
+    addRealtimeRemarksListener: (onRemarksUpdated: (List<Remark>) -> Unit) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var showAddRemarkDialog by remember { mutableStateOf(false) }
     var showRemarkListDialog by remember { mutableStateOf(false) }
     var remarkCount by remember { mutableIntStateOf(item.remarks.size) }
-    var remarks by remember { mutableStateOf<List<Remark>>(emptyList()) }
+    var remarks by remember { mutableStateOf<List<Remark>>(item.remarks) }
     var newRemarkText = remember { mutableStateOf(TextFieldValue("")) }
 
     LaunchedEffect(Unit) {
         // This will run when the composable is first composed or recomposed
-        remarks = fetchRemarks()
+        addRealtimeRemarksListener { updatedRemarks ->
+            remarks = updatedRemarks
+        }
+        //remarks = fetchRemarks()
         Log.d("TAG", "RemarkCount: ${remarks.size}")
     }
-
+    /*
     LaunchedEffect(showRemarkListDialog) {
         if (showRemarkListDialog) {
             scope.launch {
@@ -144,6 +167,8 @@ fun SeeTasksDesign(
             }
         }
     }
+
+     */
 
     Card(
         modifier = Modifier

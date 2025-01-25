@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -71,7 +72,8 @@ fun EmployeeHomeScreen(
     navigateToPunchInPunchOut: () -> Unit,
     navigateToEmployeeAttendence: () -> Unit,
     navigateToRaiseExpense: () -> Unit,
-    navigateToAllExpense: () -> Unit
+    navigateToAllExpense: () -> Unit,
+    navigateToChatScreen: () -> Unit
 ) {
 
     val progressState by viewmodel.progressBarState.collectAsState()
@@ -168,6 +170,13 @@ fun EmployeeHomeScreen(
                                 "Expense Hist",
                                 iconDrawable = painterResource(id=R.drawable.expense_list_ic),
                                 onClick = { navigateToAllExpense() }
+                            )
+                        }
+                        item {
+                            OptionCard(
+                                "Chat",
+                                iconVector = Icons.Default.Send,
+                                onClick = { navigateToChatScreen() }
                             )
                         }
 
@@ -286,6 +295,7 @@ fun EmployeeHomeScreenPreview() {
         EmployeeHomeScreen(
             viewmodel = EmlAllTask(),
             loginViewModel = LoginViewModel(),
+            {},
             {},
             {},
             {},

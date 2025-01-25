@@ -93,8 +93,13 @@ import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.location.Geofence
+import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
@@ -110,6 +115,7 @@ class GeofenceHelper(private val context: Context) {
         val geofence = buildGeofence(location, radius, requestId, Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_DWELL or Geofence.GEOFENCE_TRANSITION_EXIT)
         val geofencingRequest = buildGeofencingRequest(geofence)
         val pendingIntent=getGeofencePendingIntent()
+
         if (hasLocationPermission()) {
             if (ActivityCompat.checkSelfPermission(
                     context,
@@ -151,7 +157,7 @@ class GeofenceHelper(private val context: Context) {
 
     // Build the geofence
     private fun buildGeofence(location: LatLng, radius: Double, requestId: String, transitionTypes:Int): Geofence {
-        Log.d("GeofenceHelper", "Building geofence for: $requestId")
+        Log.d("GeofenceHelper", "Building geofence for: $requestId, $transitionTypes")
         return Geofence.Builder()
             .setRequestId(requestId)
             .setCircularRegion(location.latitude, location.longitude, radius.toFloat())
@@ -175,10 +181,13 @@ class GeofenceHelper(private val context: Context) {
     private fun getGeofencePendingIntent(): PendingIntent {
         if (pendingIntent == null) {
             Log.d("GeofenceHelper", "Creating new PendingIntent for geofence transitions")
-            val intent = Intent(context, GeofenceBroadcastReceiver::class.java)
+            val intent = Intent(context, GeofenceBroadcastReceiver::class.java).apply {
+                action = GeofenceBroadcastReceiver.ACTION_GEOFENCE_EVENT
+            }
+
             pendingIntent = PendingIntent.getBroadcast(
                 context,
-                0,
+                2607,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -186,6 +195,19 @@ class GeofenceHelper(private val context: Context) {
             Log.d("GeofenceHelper", "Reusing existing PendingIntent")
         }
         return pendingIntent!!
+    }
+
+    fun getErrorString(e: Exception): String {
+        return if (e is ApiException) {
+            when (e.statusCode) {
+                GeofenceStatusCodes.GEOFENCE_NOT_AVAILABLE -> "GEOFENCE_NOT_AVAILABLE"
+                GeofenceStatusCodes.GEOFENCE_TOO_MANY_GEOFENCES -> "GEOFENCE_TOO_MANY_GEOFENCES"
+                GeofenceStatusCodes.GEOFENCE_TOO_MANY_PENDING_INTENTS -> "GEOFENCE_TOO_MANY_PENDING_INTENTS"
+                else -> e.localizedMessage
+            }
+        } else {
+            e.localizedMessage
+        }
     }
 
     // Helper method to check location permission

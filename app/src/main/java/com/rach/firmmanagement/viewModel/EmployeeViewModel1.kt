@@ -1,14 +1,18 @@
 package com.rach.firmmanagement.viewModel
 
+import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.rach.firmmanagement.HomeScreen.getCurrentDate
 import com.rach.firmmanagement.dataClassImp.AdvanceMoneyData
-import com.rach.firmmanagement.dataClassImp.EmployeeSectionData
+import com.rach.firmmanagement.dataClassImp.EmployeeLeaveData
 import com.rach.firmmanagement.dataClassImp.Expense
 import com.rach.firmmanagement.dataClassImp.ExpenseItem
+import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
+import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.repository.EmployeeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -98,12 +102,12 @@ class EmployeeViewModel1 : ViewModel() {
 
             repository.raiseALeave(
                 adminPhoneNumber = adminPhoneNumber,
-                employeeSectionData = EmployeeSectionData(
+                employeeleaveData = EmployeeLeaveData(
                     type = _leaveType.value,
                     startingDate = _startingDate.value,
                     endDate = _endDate.value,
                     reason = _reason.value,
-                    status = false,
+                    status = 0,
                     currentDate = currentDate,
                     emlPhoneNumber = currentUserPhoneNumber
                 ),
@@ -117,6 +121,54 @@ class EmployeeViewModel1 : ViewModel() {
                 }
             )
 
+        }
+    }
+
+    private val _selectedLeaveMonth = MutableStateFlow(getCurrentMonth())
+    val selectedLeaveMonth: StateFlow<String> = _selectedLeaveMonth
+    fun onSelectedLeaveMonthChange(newMonth: String) {
+        _selectedLeaveMonth.value = newMonth
+    }
+    private val _selectedLeaveFromDate = MutableStateFlow("")
+    val selectedLeaveFromDate: StateFlow<String> = _selectedLeaveFromDate
+    fun onSelectedFromDateChange(newDate: String) {
+        _selectedLeaveFromDate.value = newDate
+    }
+
+    private val _selectedLeaveToDate = MutableStateFlow("")
+    val selectedLeaveToDate: StateFlow<String> = _selectedLeaveToDate
+    fun onSelectedLeaveToDateChange(newDate: String) {
+        _selectedLeaveToDate.value = newDate
+    }
+
+    private val _leaves = MutableStateFlow<List<EmployeeLeaveData>>(emptyList())
+    val leaves: StateFlow<List<EmployeeLeaveData>> = _leaves
+
+    fun getLeaves(
+        adminPhoneNumber: String,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit,
+        selectedMonth: String,
+        from: String,
+        to: String,
+    ){
+        viewModelScope.launch {
+            _circularBarState.value = true
+            repository.getLeaves(
+                adminPhoneNumber = adminPhoneNumber,
+                onSuccess = {
+                    _circularBarState.value = false
+                    _leaves.value = it
+                    onSuccess()
+                },
+                onFailure = {
+                    _circularBarState.value = false
+                    onFailure()
+                },
+                selectedMonth = selectedMonth,
+                from = from,
+                to = to
+            )
         }
     }
 
@@ -151,10 +203,8 @@ class EmployeeViewModel1 : ViewModel() {
                     amount = _amount.value,
                     date = currentDate,
                     emplPhoneNumber = currentUserPhoneNumber,
-                    status = false,
+                    status = 0,
                     time = currentTime
-
-
                 ),
                 onSuccess = {
                     _circularBarState.value = false
@@ -168,6 +218,51 @@ class EmployeeViewModel1 : ViewModel() {
         }
 
 
+    }
+
+    private val _advanceMoney = MutableStateFlow<List<AdvanceMoneyData>>(emptyList())
+    val advanceMoney: StateFlow<List<AdvanceMoneyData>> = _advanceMoney
+    private val _selectedFromDateAdvance = MutableStateFlow(getTodayDate())
+    val selectedFromDateAdvance: StateFlow<String> = _selectedFromDateAdvance
+    fun onSelectedFromDateAdvanceChange(newDate: String) {
+        _selectedFromDateAdvance.value = newDate
+    }
+    private val _selectedToDateAdvance = MutableStateFlow(getTodayDate())
+    val selectedToDateAdvance: StateFlow<String> = _selectedToDateAdvance
+    fun onSelectedToDateAdvanceChange(newDate: String) {
+        _selectedToDateAdvance.value = newDate
+    }
+    private val _selectedAdvanceMonth = MutableStateFlow(getCurrentMonth())
+    val selectedAdvanceMonth: StateFlow<String> = _selectedAdvanceMonth
+    fun onSelectedAdvanceMonthChange(newMonth: String) {
+        _selectedAdvanceMonth.value = newMonth
+    }
+    fun getAdvance(
+        adminPhoneNumber: String,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit,
+        selectedMonth: String,
+        from: String,
+        to: String,
+    ){
+        viewModelScope.launch {
+            _circularBarState.value = true
+            repository.getAdvance(
+                adminPhoneNumber = adminPhoneNumber,
+                onSuccess = {
+                    _circularBarState.value = false
+                    _advanceMoney.value = it
+                    onSuccess()
+                },
+                onFailure = {
+                    _circularBarState.value = false
+                    onFailure()
+                },
+                selectedMonth = selectedMonth,
+                from = from,
+                to = to
+            )
+        }
     }
 
 
@@ -186,11 +281,13 @@ class EmployeeViewModel1 : ViewModel() {
         items = newItems
     }
 
-    var remaining: String by mutableStateOf("")
-        private set
+    private val _remaining = MutableStateFlow("")
+    val remaining :StateFlow<String> = _remaining
+
 
     fun onRemainingChange(newRemaining: String) {
-        remaining = newRemaining
+        Log.d("Remaining", "onRemainingChange: $newRemaining")
+        _remaining.value = newRemaining
     }
 
     var selectedDate: String by mutableStateOf("")
@@ -211,7 +308,7 @@ class EmployeeViewModel1 : ViewModel() {
                 expense= Expense(
                     moneyRaise = moneyRaise,
                     items = items,
-                    remaining = remaining,
+                    remaining = remaining.value,
                     selectedDate = selectedDate,
                     employeeNumber = currentUserPhoneNumber
                 ),
@@ -277,6 +374,136 @@ class EmployeeViewModel1 : ViewModel() {
             } finally {
                 isLoading = false
             }
+        }
+    }
+
+
+    // new change:
+    private val _fromDate = MutableStateFlow(getTodayDate())
+    val fromDate: StateFlow<String> = _fromDate
+
+    fun onChangeFromDate(newDate: String) {
+        Log.d("Attendance", "FromDateChange: $newDate")
+        _fromDate.value = newDate
+    }
+
+    private val _toDate = MutableStateFlow(getTodayDate())
+    val toDate: StateFlow<String> = _toDate
+
+    fun onChangeToDate(newDate: String) {
+        Log.d("Attendance", "ToDateChange: $newDate")
+        _toDate.value = newDate
+    }
+
+    private val _selectedMonth = MutableStateFlow(getCurrentMonth())
+    val selectedMonth1: StateFlow<String> = _selectedMonth
+    fun onSelectedMonthChange(newMonth: String) {
+        _selectedMonth.value = newMonth
+    }
+
+    private val _employeeExpense=MutableStateFlow<List<Expense>>(emptyList())
+    val employeeExpense:StateFlow<List<Expense>> = _employeeExpense
+
+    private var _loading = MutableStateFlow(false)
+    val expenseLoading: StateFlow<Boolean> get() = _loading
+    fun fetchExpense(
+        adminPhoneNumber:String,
+        from: String,
+        to: String,
+        selectedMonth: String
+    ) {
+        viewModelScope.launch {
+            _loading.value = true
+            repository.getEmployeeExpense(
+                adminPhoneNumber = adminPhoneNumber,
+                from = from,
+                to = to,
+                selectedMonth = selectedMonth,
+                onSuccess = { expenses ->
+                    _employeeExpense.value = expenses
+                    _loading.value = false
+                },
+                onFailure = {
+                    _employeeExpense.value = emptyList()
+                    _loading.value = false
+                }
+            )
+        }
+    }
+
+
+
+    // Employee Attendance
+    private val _fromDateAttendance = MutableStateFlow(getTodayDate())
+    val fromDateAttendance: StateFlow<String> = _fromDateAttendance
+
+    fun onChangeAttendanceFromDate(newDate: String) {
+        Log.d("Attendance", "FromDateChange: $newDate")
+        _fromDateAttendance.value = newDate
+    }
+
+    private val _toDateAttendance = MutableStateFlow(getTodayDate())
+    val toDateAttendance: StateFlow<String> = _toDateAttendance
+
+    fun onChangeAttendanceToDate(newDate: String) {
+        Log.d("Attendance", "ToDateChange: $newDate")
+        _toDateAttendance.value = newDate
+    }
+
+    private val _selectedMonthAttendance = MutableStateFlow(getCurrentMonth())
+    val selectedMonthAttendance: StateFlow<String> = _selectedMonthAttendance
+
+    fun onChangeSelectedMonthAttendance(newMonth: String) {
+        Log.d("Attendance", "MonthChange: $newMonth")
+        _selectedMonthAttendance.value = newMonth
+    }
+
+    private val _attendance=MutableStateFlow<List<PunchInPunchOut>>(emptyList())
+    val attendance:StateFlow<List<PunchInPunchOut>> = _attendance
+
+    @SuppressLint("DefaultLocale", "SimpleDateFormat")
+    private fun getCurrentMonth(): String {
+        val calendar = Calendar.getInstance()
+        val year = calendar.get(Calendar.YEAR)
+        val monthFormat = SimpleDateFormat("MMM") // Formats month as "Jan", "Feb", etc.
+        val month = monthFormat.format(calendar.time)
+
+        return "$month $year"
+    }
+
+    @SuppressLint("DefaultLocale")
+    fun getTodayDate(): String {
+        val calendar = Calendar.getInstance()
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH) + 1 // Month is 0-indexed
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+        return String.format("%02d-%02d-%04d", day, month, year)
+    }
+
+
+    fun fetchAttendance(
+        adminPhoneNumber: String,
+        from: String,
+        to: String,
+        selectedMonth: String
+    ){
+        viewModelScope.launch {
+            isLoading = true
+            repository.fetchAttendance(
+                adminPhoneNumber=adminPhoneNumber,
+                from = from,
+                to = to,
+                selectedMonth = selectedMonth,
+                onSuccess = {
+                    _attendance.value = it
+                    isLoading = false
+                },
+                onFailure = {
+                    _attendance.value = emptyList()
+                    isLoading = false
+                }
+            )
         }
     }
 

@@ -405,7 +405,9 @@ fun EmployeeSelection(
     selectedEmployees: MutableState<Set<ViewAllEmployeeDataClass>>
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val isAllSelected = selectedEmployees.value.size == employees.size - 1
+    val isAllSelected = selectedEmployees.value.size == employees.size
+    val allEmployeesOption = ViewAllEmployeeDataClass(name = "All") // Define "All" option
+    val updatedEmployees = listOf(allEmployeesOption) + employees
 
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Row(
@@ -420,9 +422,12 @@ fun EmployeeSelection(
                             fontSize = 20.sp
                         )
                     ) {
-                        append("Selected Employee: ")
+                        append("Selected Employee: \n")
                     }
-                    append("\n${selectedEmployees.value.joinToString(", ") { it.name.toString() }}")
+                    append(
+                        if (isAllSelected) "All"
+                        else selectedEmployees.value.joinToString(", ") { it.name.toString() }
+                    )
                 },
                 modifier = Modifier.weight(1f)
             )
@@ -440,22 +445,25 @@ fun EmployeeSelection(
                     onDismissRequest = { expanded = false },
                     offset = DpOffset(x = 0.dp, y = 0.dp)
                 ) {
-                    employees.forEachIndexed { index, item ->
+                    updatedEmployees.forEachIndexed { index, item ->
                         DropdownMenuItem(
                             onClick = {
-                                selectedEmployees.value = when {
-                                    index == 0 -> { // Select All
-                                        if (isAllSelected) emptySet() else employees.drop(1).toSet()
+                                if (item == allEmployeesOption) {
+                                    // Toggle "All" selection
+                                    selectedEmployees.value = if (isAllSelected) emptySet() else employees.toSet()
+                                } else {
+                                    // Toggle individual selection
+                                    selectedEmployees.value = if (selectedEmployees.value.contains(item)) {
+                                        selectedEmployees.value - item
+                                    } else {
+                                        selectedEmployees.value + item
                                     }
-
-                                    selectedEmployees.value.contains(item) -> selectedEmployees.value - item
-                                    else -> selectedEmployees.value + item
                                 }
                             }
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(
-                                    checked = if (index == 0) isAllSelected else selectedEmployees.value.contains(item),
+                                    checked = if (item == allEmployeesOption) isAllSelected else selectedEmployees.value.contains(item),
                                     onCheckedChange = null
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))

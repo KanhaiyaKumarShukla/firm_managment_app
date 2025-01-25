@@ -1,7 +1,9 @@
 package com.rach.firmmanagement.firmAdminOwner
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,14 +22,18 @@ import androidx.compose.material.AlertDialog
 import androidx.compose.material.Card
 import androidx.compose.material.Checkbox
 import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.FloatingActionButton
+import androidx.compose.material.FloatingActionButtonDefaults
+import androidx.compose.material.Icon
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -45,6 +51,7 @@ import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.ui.theme.red
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.Alignment
 import androidx.navigation.NavController
 import com.google.gson.Gson
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
@@ -58,6 +65,9 @@ fun ViewAllEmployee(
     val isLoading = viewModel.isLoading.value
     val isAssigningTask = viewModel.isAssigningTask.value
 
+    val selectedEmployees = remember { mutableStateOf(setOf<ViewAllEmployeeDataClass>()) }
+    val isSelectionMode = remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         if (isLoading) {
             Box(
@@ -69,9 +79,23 @@ fun ViewAllEmployee(
         } else {
             LazyColumn {
                 items(employees) { employee ->
+                    val isSelected = selectedEmployees.value.contains(employee)
                     val selectedEmployeeJson = Gson().toJson(employee)
                     EmployeeCard(
                         employee = employee,
+                        isSelected = isSelected,
+                        isSelectionMode = isSelectionMode.value,
+                        onCheckedChange = { isChecked ->
+                            selectedEmployees.value = if (isChecked) {
+                                selectedEmployees.value + employee
+                            } else {
+                                selectedEmployees.value - employee
+                            }
+                        },
+                        onLongPress = {
+                            isSelectionMode.value = true
+                        },
+                        navController = navController,
                         onClickDelete = {
                             viewModel.deleteEmployee(employee.phoneNumber ?: "")
                         },
@@ -93,6 +117,13 @@ fun ViewAllEmployee(
                         onExpenseClick={
                             //val selectedEmployeeJson = Gson().toJson(listOf(employee))
                             navController.navigate("${ScreenAdmin.EmployeeExpense.route}/$selectedEmployeeJson")
+                        },
+                        onChatClick={
+                            val selectedEmployeeJson = Gson().toJson(listOf(employee))
+                            navController.navigate("${ScreenAdmin.AdminMessage.route}/$selectedEmployeeJson")
+                        },
+                        onSalaryClick={
+                            navController.navigate("${ScreenAdmin.EmployeeSalary.route}/$selectedEmployeeJson")
                         }
                     )
                 }
@@ -112,23 +143,33 @@ fun ViewAllEmployee(
 }
 
 
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EmployeeCard(
     employee: ViewAllEmployeeDataClass,
+    isSelected: Boolean,
+    isSelectionMode: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onLongPress: () -> Unit,
+    navController: NavController,
     onClickDelete: () -> Unit,
     onAttendanceClick: () -> Unit,
     onTaskAssignedClick: () -> Unit,
     onProfileClick: () -> Unit,
     onHolidayAssignedClick: () -> Unit,
-    onExpenseClick: () -> Unit
+    onExpenseClick: () -> Unit,
+    onChatClick: () -> Unit,
+    onSalaryClick: () -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable { showDialog = true },
+            .combinedClickable(
+                onClick = { showDialog = true },
+                onLongClick = onLongPress
+            ),
         elevation = 4.dp
     ) {
         Row(
@@ -136,6 +177,13 @@ fun EmployeeCard(
             modifier = Modifier.padding(8.dp)
         ) {
 
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = onCheckedChange,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Logo",
@@ -215,6 +263,24 @@ fun EmployeeCard(
                         text="Expense",
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CustomButton(
+                        onClick = {
+                            showDialog = false
+                            onChatClick()
+                        },
+                        text="Chatting",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CustomButton(
+                        onClick = {
+                            showDialog = false
+                            onSalaryClick()
+                        },
+                        text="Salary",
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             },
             confirmButton = {
@@ -282,7 +348,14 @@ fun ViewAllEmployeesPreview() {
             onTaskAssignedClick = {},
             onProfileClick = {},
             onHolidayAssignedClick = {},
-            onExpenseClick = {}
+            onExpenseClick = {},
+            isSelected = false,
+            isSelectionMode = false,
+            onCheckedChange = {},
+            onLongPress = {},
+            onChatClick = {},
+            navController = NavController(LocalContext.current),
+            onSalaryClick = {}
         )
     }
 }

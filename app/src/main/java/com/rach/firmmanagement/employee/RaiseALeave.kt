@@ -1,20 +1,28 @@
 package com.rach.firmmanagement.employee
 
+import androidx.compose.foundation.lazy.items
 import android.app.DatePickerDialog
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -24,6 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.R
+import com.rach.firmmanagement.dataClassImp.EmployeeLeaveData
+import com.rach.firmmanagement.firmAdminOwner.CustomButton
+import com.rach.firmmanagement.firmAdminOwner.showDateRangePicker
+import com.rach.firmmanagement.firmAdminOwner.showMonthPicker
 import com.rach.firmmanagement.notification.MyNotification
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
 import com.rach.firmmanagement.ui.theme.blueAcha
@@ -38,7 +50,8 @@ import java.util.*
 @Composable
 fun LeaveRequestScreen(
     employeeViewModel1: EmployeeViewModel1 = viewModel(),
-    loginViewModel: LoginViewModel
+    loginViewModel: LoginViewModel,
+    onViewLeaveHistoryClick: () -> Unit
 ) {
 
     val leaveType by employeeViewModel1.leaveType.collectAsState()
@@ -221,6 +234,14 @@ fun LeaveRequestScreen(
 
             }
         }
+        CustomButton(
+            text= "View Leave History",
+            onClick = onViewLeaveHistoryClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        )
 
         if (state) {
             Box(
@@ -236,12 +257,243 @@ fun LeaveRequestScreen(
     }
 }
 
+@Composable
+fun ViewLeaveHistory(
+    employeeViewModel1: EmployeeViewModel1 = viewModel(),
+    loginViewModel: LoginViewModel
+) {
+    val leaveRequests by employeeViewModel1.leaves.collectAsState(initial = emptyList())
+    val loading by employeeViewModel1.circularBarState.collectAsState()
+    val showMonthPickerDialog = remember { mutableStateOf(false) }
+    val showDateRangePickerDialog = remember { mutableStateOf(false) }
+    val selectedMonth by employeeViewModel1.selectedLeaveMonth.collectAsState()
+    val fromDate by employeeViewModel1.selectedLeaveFromDate.collectAsState()
+    val toDate by employeeViewModel1.selectedLeaveToDate.collectAsState()
+
+    val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
+
+    // Get current year
+    val currentYear = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) }
+    val currentMonth = remember { java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) } +1
+
+    LaunchedEffect(key1 = Unit) {
+        // Trigger getLeaves for the whole year by default
+        employeeViewModel1.getLeaves(
+            adminPhoneNumber = adminPhoneNumber,
+            selectedMonth = "", // Empty for whole year
+            from = "01-$currentMonth-$currentYear",
+            to = "31-$currentMonth-$currentYear",
+            onSuccess = {},
+            onFailure = {}
+        )
+    }
+
+    if (loading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
+    }else {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Select Month
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showMonthPickerDialog.value = true }
+                ) {
+                    OutlinedTextField(
+                        value = selectedMonth,
+                        onValueChange = {},
+                        label = { Text("By Month") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(onClick = { showMonthPickerDialog.value = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Date Picker"
+                                )
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(5.dp))
+
+                CustomButton(
+                    onClick = {
+                        employeeViewModel1.getLeaves(
+                            adminPhoneNumber = adminPhoneNumber,
+                            selectedMonth = selectedMonth,
+                            from = "",
+                            to = "",
+                            onSuccess = {},
+                            onFailure = {}
+                        )
+                    },
+                    text = "Search"
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Select Date Range
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showDateRangePickerDialog.value = true }
+                ) {
+                    OutlinedTextField(
+                        value = "$fromDate to $toDate",
+                        onValueChange = {},
+                        label = { Text("By Date Range") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(onClick = { showDateRangePickerDialog.value = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = "Date Picker"
+                                )
+                            }
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(5.dp))
+
+                CustomButton(
+                    onClick = {
+                        employeeViewModel1.getLeaves(
+                            adminPhoneNumber = adminPhoneNumber,
+                            selectedMonth = "",
+                            from = fromDate,
+                            to = toDate,
+                            onSuccess = {},
+                            onFailure = {}
+                        )
+                    },
+                    text = "Search"
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+
+            if (leaveRequests.isEmpty()) {
+                NoDataFound(message = "No Data Found")
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+
+                ) {
+                    items(leaveRequests) { leave ->
+                        LeaveCard(leave)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+
+            // Month Picker Dialog
+            if (showMonthPickerDialog.value) {
+                showMonthPicker(
+                    onMonthSelected = { selected ->
+                        employeeViewModel1.onSelectedLeaveMonthChange(selected)
+                        showMonthPickerDialog.value = false
+                    },
+                    onDismissRequest = { showMonthPickerDialog.value = false }
+                )
+            }
+
+            // Date Range Picker Dialog
+            if (showDateRangePickerDialog.value) {
+                showDateRangePicker(
+                    onRangeSelected = { from, to ->
+                        employeeViewModel1.onSelectedFromDateChange(from)
+                        employeeViewModel1.onSelectedLeaveToDateChange(to)
+                        showDateRangePickerDialog.value = false
+                    },
+                    onDismissRequest = { showDateRangePickerDialog.value = false }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LeaveCard(leave: EmployeeLeaveData) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White, shape = RoundedCornerShape(8.dp))
+            .shadow(2.dp,  shape = RoundedCornerShape(8.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = leave.type.toString(),
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            val statusText = when (leave.status) {
+                1 -> "Approved"
+                0 -> "Not Approved yet"
+                else -> "Rejected"
+            }
+            Text(
+                text = statusText, // Assuming `status` is a property in `LeaveDataClass`
+                style = MaterialTheme.typography.bodySmall,
+                color = when (leave.status) {
+                    1 -> Color.Green
+                    0 -> Color.Gray
+                    else -> Color.Red
+                }
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "${leave.startingDate} - ${leave.endDate}",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = leave.reason.toString(),
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+
+
 @Preview(showBackground = true)
 @Composable
 fun Prevbiwew() {
     FirmManagementTheme {
         LeaveRequestScreen(
-            loginViewModel = LoginViewModel()
+            loginViewModel = LoginViewModel(),
+            onViewLeaveHistoryClick = {},
+            employeeViewModel1 = EmployeeViewModel1()
         )
     }
 }

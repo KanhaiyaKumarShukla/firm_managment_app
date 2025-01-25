@@ -8,11 +8,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.EmployeeHomeScreenData
+import com.rach.firmmanagement.dataClassImp.GeofenceItems
 import com.rach.firmmanagement.dataClassImp.LocationData
 import com.rach.firmmanagement.dataClassImp.OutForWork
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.repository.EmployeeRepository
+import com.rach.firmmanagement.repository.GeofenceRepository
 import com.rach.firmmanagement.repository.NoAdminRepository
 import com.rach.firmmanagement.repository.PunchInPunchOutRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,7 +68,6 @@ class EmlAllTask(
         adminPhoneNumber: String,
         taskId: String,
         isCommon: Boolean,
-        employeePhone: String = "",
         newRemark: String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
@@ -74,7 +75,7 @@ class EmlAllTask(
         viewModelScope.launch {
             repository.addRemark(
                 adminPhoneNumber = adminPhoneNumber,
-                employeePhone = employeePhone,
+                employeePhone = employeeNumber,
                 taskId = taskId,
                 isCommon = isCommon,
                 newRemark = Remark(
@@ -101,6 +102,37 @@ class EmlAllTask(
             isCommon = isCommon,
         )
 
+    }
+    fun addRealtimeRemarksListener(
+        adminPhoneNumber: String,
+        employeePhone: String,
+        taskId: String,
+        onRemarksUpdated: (List<Remark>) -> Unit
+    ) {
+        val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
+
+        val taskRef = database.collection("Members")
+            .document(updateAdminNumber)
+            .collection("Employee")
+            .document(employeePhone)
+            .collection("Task")
+            .document(taskId)
+
+        taskRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e("TAG", "Error listening for remarks updates: ${error.message}")
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null && snapshot.exists()) {
+                val taskData = repository.parseAddTaskDataClass(snapshot)
+                taskData.remarks.let { onRemarksUpdated(it) }
+            }
+        }
     }
 
     //Location
@@ -209,7 +241,7 @@ class EmlAllTask(
     fun punchIn(
         adminPhoneNumber: String,
         name: String,
-        location: String,
+        location: GeofenceItems,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
@@ -271,6 +303,25 @@ class EmlAllTask(
                 Log.d("Att", "Error in punchIn: ${e.message}")
                 onFailure()
             }
+        }
+    }
+
+    private val geofenceRepository: GeofenceRepository= GeofenceRepository()
+    private val _geofences = MutableStateFlow<List<GeofenceItems>>(emptyList())
+    val geofences: StateFlow<List<GeofenceItems>> = _geofences
+    fun getGeofence(
+        adminPhoneNumber: String
+    ){
+        viewModelScope.launch {
+            geofenceRepository.getAllGeofences(
+                adminPhoneNumber,
+                onSuccess = { geofenceList ->
+                    _geofences.value = geofenceList
+                },
+                onFailure = {
+                    _geofences.value=emptyList()
+                }
+            )
         }
     }
 

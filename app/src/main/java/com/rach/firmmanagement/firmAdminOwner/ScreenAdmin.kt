@@ -20,5 +20,9 @@ sealed class ScreenAdmin(val route: String) {
     object ViewOneEmployeeTask: ScreenAdmin("One Employee Task")
     object EmployeeProfile: ScreenAdmin("Employee Profile")
     object EmployeeExpense:ScreenAdmin("Employee Task")
+    object AdminChatScreen:ScreenAdmin("Admin Chat Screen")
+    object AdminMessage:ScreenAdmin("Admin Message")
+    object EmployeeChat:ScreenAdmin("Employee Chat")
+    object EmployeeSalary:ScreenAdmin("Employee Salary")
 
 }

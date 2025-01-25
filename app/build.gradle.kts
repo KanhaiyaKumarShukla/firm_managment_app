@@ -79,7 +79,7 @@ dependencies {
     implementation(libs.libphonenumber)
 
     // Import the BoM for the Firebase platform
-    implementation(libs.firebase.bom)
+    implementation(platform(libs.firebase.bom))
 
     // Add the dependency for the Firebase Authentication library
     // When using the BoM, you don't specify versions in Firebase library dependencies

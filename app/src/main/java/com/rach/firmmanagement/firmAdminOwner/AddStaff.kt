@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,9 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
@@ -81,6 +84,7 @@ fun AddStaff(
     val salary by adminViewModel.salary.collectAsState()
     val registrationDate by adminViewModel.registrationDate.collectAsState()
     val timeVariation by adminViewModel.timeVariation.collectAsState()
+    val selectedTimeVariationUnit by adminViewModel.timeVariationUnit.collectAsState()
 
 
     val leaveDays by adminViewModel.leaveDays.collectAsState()
@@ -99,6 +103,9 @@ fun AddStaff(
     val leaveDaysError = buttonState && leaveDays.isEmpty()
     val geofences by geofenceViewModel.geofences.collectAsState()
     val scope = rememberCoroutineScope()
+
+    var selectedSalaryUnit = adminViewModel.salaryUnit.collectAsState()
+
     LaunchedEffect(Unit) {
         geofenceViewModel.fetchAllGeofences()
     }
@@ -172,6 +179,7 @@ fun AddStaff(
             isError = roleError,
             readOnly = false
         )
+        /*
 
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -185,6 +193,23 @@ fun AddStaff(
             isError = salaryError,
             readOnly = false
         )
+         */
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        TextFieldWithDropdown(
+            value = salary,
+            onValueChange = {
+                adminViewModel.onChangeSalary(it)
+            },
+            valueError = salaryError,
+            unit = selectedSalaryUnit.value,
+            onUnitChange = {
+                  adminViewModel.onChangeSalaryUnit(it)
+            },
+            label = "Salary"
+        )
+
         Spacer(modifier = Modifier.height(10.dp))
 
         Column (modifier = Modifier.fillMaxWidth()){
@@ -194,6 +219,11 @@ fun AddStaff(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = Color.Gray,
+                        shape = RoundedCornerShape(6)
+                    )
             ) {
                 OutlinedTextField(
                     value = selectedTitle,
@@ -204,7 +234,11 @@ fun AddStaff(
                         .clickable {
                             expanded = true
                             Log.d("Geofence", "123 Geofence clicked: $geofences")
-                        }
+                        },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent
+                    )
                 )
                 Box {
                     IconButton(onClick = { expanded = !expanded }) {
@@ -238,15 +272,17 @@ fun AddStaff(
         }
 
         Spacer(modifier = Modifier.height(10.dp))
-        CustomOutlinedTextFiled(
+        TextFieldWithDropdown(
             value = timeVariation,
             onValueChange = {
                 adminViewModel.onChangeTimeVariation(it)
             },
-            label = "Time Variation",
-            singleLine = true,
-            isError = timeVariationError,
-            readOnly = false
+            valueError = timeVariationError,
+            unit = selectedTimeVariationUnit,
+            onUnitChange = {
+                adminViewModel.onChangeTimeVariationUnit(it)
+            },
+            label = "Time Variation"
         )
         Spacer(modifier = Modifier.height(10.dp))
         CustomOutlinedTextFiled(
@@ -373,6 +409,71 @@ fun AddStaff(
         }
     }
 }
+
+@Composable
+fun TextFieldWithDropdown(
+    value: String,
+    onValueChange: (String) -> Unit,
+    valueError: Boolean,
+    unit: String,
+    label:String,
+    onUnitChange: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val dropdownOptions = listOf("Per Hour", "Per Day", "Per Month")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = Color.Gray,
+                shape = RoundedCornerShape(6)
+            )
+    ) {
+
+        CustomOutlinedTextFiled(
+            value = "$value $unit",
+            onValueChange = { onValueChange(it) },
+            label = label,
+            singleLine = true,
+            isError = valueError,
+            readOnly = false,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent
+            ),
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Box {
+            IconButton(onClick = { expanded = !expanded }) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowLeft,
+                    contentDescription = "Expand"
+                )
+            }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                offset = DpOffset(x = 0.dp, y = 0.dp)
+            ) {
+                dropdownOptions.forEach { option ->
+                    DropdownMenuItem(
+                        onClick = {
+                            onUnitChange(option)
+                            expanded = false
+                        }
+                    ) {
+                        Text(text = option)
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 fun CustomButton(

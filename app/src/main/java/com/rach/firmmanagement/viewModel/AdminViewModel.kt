@@ -6,17 +6,21 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.Expense
 import com.rach.firmmanagement.dataClassImp.GeofenceItems
 import com.rach.firmmanagement.dataClassImp.HolidayAndHoursDataClass
+import com.rach.firmmanagement.dataClassImp.MessageDataClass
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -85,6 +89,12 @@ class AdminViewModel() : ViewModel() {
         _salary.value = newSalary
     }
 
+    private val _salaryUnit=MutableStateFlow("")
+    val salaryUnit: StateFlow<String> =_salaryUnit
+    fun onChangeSalaryUnit(newUnit:String){
+        _salaryUnit.value=newUnit
+    }
+
     // registration Date
 
     val dateFormat = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
@@ -102,6 +112,13 @@ class AdminViewModel() : ViewModel() {
 
     fun onChangeTimeVariation(newTime: String){
         _timeVariation.value = newTime
+    }
+
+    private val _timeVariationUnit = MutableStateFlow("")
+    val timeVariationUnit: StateFlow<String> = _timeVariationUnit
+
+    fun onChangeTimeVariationUnit(newUnit: String){
+        _timeVariationUnit.value = newUnit
     }
 
     private val _leaveDays = MutableStateFlow("")
@@ -134,8 +151,10 @@ class AdminViewModel() : ViewModel() {
                     newPhoneNumber = _phoneNumber.value,
                     role = _role.value,
                     salary = _salary.value,
+                    salaryUnit = _salaryUnit.value,
                     registrationDate = _registrationDate.value,
                     timeVariation = _timeVariation.value,
+                    timeVariationUnit = _timeVariationUnit.value,
                     leaveDays = _leaveDays.value,
                     workPlace = _selectedGeoFence.value
                 ),
@@ -342,6 +361,39 @@ class AdminViewModel() : ViewModel() {
             )
         }
     }
+
+    fun addRealtimeRemarksListener(
+        employeePhone: String,
+        taskId: String,
+        onRemarksUpdated: (List<Remark>) -> Unit
+    ) {
+        val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
+        val database = FirebaseFirestore.getInstance()
+
+        val taskRef = database.collection("Members")
+            .document(updateAdminNumber)
+            .collection("Employee")
+            .document(employeePhone)
+            .collection("Task")
+            .document(taskId)
+
+        taskRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e("TAG", "Error listening for remarks updates: ${error.message}")
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null && snapshot.exists()) {
+                val taskData = repository.parseAddTaskDataClass(snapshot)
+                taskData.remarks.let { onRemarksUpdated(it) }
+            }
+        }
+    }
+
 
     suspend fun fetchRemarks(
         taskId: String,
@@ -601,5 +653,65 @@ class AdminViewModel() : ViewModel() {
             )
         }
     }
+
+
+    // chat message
+    private val _messages = MutableStateFlow<List<MessageDataClass>>(emptyList())
+    val messages: StateFlow<List<MessageDataClass>> = _messages
+    private val _inputMessage = MutableStateFlow("")
+    val inputMessage: StateFlow<String> = _inputMessage
+    fun onChangeMessage(newReason: String) {
+        _inputMessage.value = newReason
+        Log.d("Chat", "change: $newReason, ${inputMessage.value}")
+    }
+    fun sendMessage(
+        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        message: MessageDataClass
+    ) {
+        Log.d("Chat", "Sending message to multiple employees: $selectedEmployees")
+        viewModelScope.launch {
+            selectedEmployees.forEach { employee ->
+                repository.sendMessage(
+                    adminPhoneNumber = message.senderName,
+                    employeeNumber = employee.phoneNumber.toString(),
+                    message = message.copy(receiverName = employee.phoneNumber.toString()),
+                    onSuccess = {
+                        if(selectedEmployees.size==1) {
+                            fetchMessages(employee.phoneNumber.toString())
+                        }else{
+                            _messages.value =listOf(message) + _messages.value
+                        }
+                    },
+                    onFailure = {
+                        Log.e("Chat", "Failed to send message to ${employee.phoneNumber}")
+                    }
+                )
+            }
+        }
+    }
+
+    private var messagesListener: ListenerRegistration? = null
+    fun fetchMessages(
+        employeeNumber:String
+    ) {
+        viewModelScope.launch {
+            messagesListener = repository.fetchMessages(
+                adminPhoneNumber,
+                employeeNumber,
+                onSuccess = { fetchedMessages ->
+                    _messages.value = fetchedMessages
+                },
+                onFailure = {
+                    _messages.value= emptyList()
+                }
+            )
+        }
+    }
+
+    fun stopListeningForMessages() {
+        messagesListener?.remove() // Remove the listener to avoid memory leaks
+        messagesListener = null
+    }
+
 
 }

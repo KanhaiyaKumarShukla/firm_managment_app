@@ -5,10 +5,13 @@ import android.icu.util.Calendar
 import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import com.google.gson.Gson
+import com.rach.firmmanagement.dataClassImp.GeofenceItems
 import com.rach.firmmanagement.dataClassImp.OutForWork
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import kotlinx.coroutines.tasks.await
@@ -157,6 +160,23 @@ class PunchInPunchOutRepository {
             Log.d("Att", "Failed to punchIn- ${e.message}")
             onFailure()
         }
+    }
+
+    private fun parsePunchInPunchOut(document: DocumentSnapshot): PunchInPunchOut {
+        return PunchInPunchOut(
+            currentTime = document.getString("currentTime"),
+            absent = document.getString("absent") ?: "Present",
+            date = document.getString("date"),
+            punchTime = document.getString("punchTime"),
+            punchOutTime = document.getString("punchOutTime"),
+            locationPunchTime = document.get("locationPunchTime")?.let {
+                // Parse GeofenceItems manually if needed
+                Gson().fromJson(it.toString(), GeofenceItems::class.java)
+            },
+            name = document.getString("name"),
+            phoneNumberString = document.getString("phoneNumberString"),
+            totalMinutes = document.getLong("totalMinutes")?.toInt() ?: 0
+        )
     }
 
     suspend fun isPunchInPossible(

@@ -53,13 +53,23 @@ fun RaiseExpense(
     var items by remember { mutableStateOf(employeeViewModel.items) }
 
     // State for the remaining amount
-    var remaining by remember { mutableStateOf(employeeViewModel.remaining) }
+    val remainingMoney by employeeViewModel.remaining.collectAsState()
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     var selectedDate by remember { mutableStateOf(employeeViewModel.selectedDate) }
     val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
     val scope = rememberCoroutineScope()
 
+    fun updateMoneyRemaining() {
+        val raise = moneyRaise.toDoubleOrNull() ?: 0.0
+        val totalItemsValue = items.sumOf { it.value.toDoubleOrNull() ?: 0.0 }
+        val remaining = raise - totalItemsValue
+        employeeViewModel.onRemainingChange(remaining.toString())
+        Log.d("Remaining", "updateMoneyRemaining: $remainingMoney")
+    }
+    LaunchedEffect(moneyRaise, items) {
+        updateMoneyRemaining()
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -156,7 +166,7 @@ fun RaiseExpense(
 
         // Remaining amount
         Text(
-            text = "Remain",
+            text = "Remaining",
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
@@ -165,14 +175,13 @@ fun RaiseExpense(
         )
 
         OutlinedTextField(
-            value = remaining,
+            value = remainingMoney,
             onValueChange = {
-                remaining = it
-                employeeViewModel.onRemainingChange(it)
             },
-            label = { Text("Enter Remaining Amount") },
+            label = { Text("Remaining Amount") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
+            readOnly = true
         )
 
         Spacer(modifier = Modifier.height(16.dp))

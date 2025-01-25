@@ -47,7 +47,9 @@ import androidx.compose.material3.TabRow
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.*
+import com.rach.firmmanagement.firmAdminOwner.EmployeeAttendance
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
+import com.rach.firmmanagement.viewModel.EmployeeViewModel1
 import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -438,7 +440,7 @@ fun PunchInOutAttendance(
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                text = detail.locationPunchTime ?: "N/A",
+                                text = detail.locationPunchTime.toString(),
                                 modifier = Modifier
                                     .width(150.dp) // Wider column for "Location"
                                     .padding(8.dp),
@@ -455,6 +457,7 @@ fun PunchInOutAttendance(
 
 }
 
+/*
 @SuppressLint("DefaultLocale")
 @Composable
 fun EmployAttendance(
@@ -517,6 +520,55 @@ fun EmployAttendance(
 
     }
 
+}
+*/
+
+@Composable
+fun EmployAttendance(
+    loginViewModel: LoginViewModel,
+    employeeViewModel: EmployeeViewModel1=viewModel()
+) {
+    val selectedMonth by employeeViewModel.selectedMonthAttendance.collectAsState()
+    val selectedToDate by employeeViewModel.toDateAttendance.collectAsState()
+    val selectedFromDate by employeeViewModel.fromDateAttendance.collectAsState()
+    val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
+    val attendanceDetails by employeeViewModel.attendance.collectAsState()
+
+    LaunchedEffect(key1 = Unit) {
+        employeeViewModel.fetchAttendance(
+            adminPhoneNumber = adminPhoneNumber,
+            selectedMonth = selectedMonth,
+            from = "",
+            to = ""
+        )
+        Log.d("Attendance", "EmployAttendance: $attendanceDetails, $selectedMonth, $selectedFromDate, $selectedToDate")
+    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        EmployeeAttendance(
+            selectedEmployees = setOf(), // Pass the selected employees here if needed
+            attendanceData = attendanceDetails, // Pass the attendance data here
+            fromDate = selectedFromDate, // Update with the actual from date
+            toDate = selectedToDate, // Update with the actual to date
+            selectedMonth = selectedMonth, // Update as necessary
+            attendanceLoading = employeeViewModel.isLoading, // Pass actual loading state
+            onFetchAttendance = { selectedEmployee, month, from, to ->
+                employeeViewModel.fetchAttendance(
+                    adminPhoneNumber = adminPhoneNumber,
+                    selectedMonth = month,
+                    from = from,
+                    to = to
+                )
+            },
+            onMonthChange = {
+                employeeViewModel.onChangeSelectedMonthAttendance(it)
+            },
+            onDateRangeChange = { from, to ->
+                employeeViewModel.onChangeAttendanceFromDate(from)
+                employeeViewModel.onChangeAttendanceToDate(to)
+            },
+            toShowOneEmployee = true
+        )
+    }
 }
 
 @Composable
@@ -689,7 +741,7 @@ fun ImplyAttendPreview() {
         //EmployAttendance(loginViewModel = LoginViewModel())
         EmployAttendance(
             loginViewModel = LoginViewModel(),
-            employeeViewModel = AllEmployeeViewModel()
+            employeeViewModel = EmployeeViewModel1()
         )
     }
 }

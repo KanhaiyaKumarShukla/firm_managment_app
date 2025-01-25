@@ -6,15 +6,19 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.SetOptions
+import com.google.gson.Gson
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.AddWorkingHourDataClass
 import com.rach.firmmanagement.dataClassImp.Expense
 import com.rach.firmmanagement.dataClassImp.ExpenseItem
+import com.rach.firmmanagement.dataClassImp.GeofenceItems
 import com.rach.firmmanagement.dataClassImp.HolidayAndHoursDataClass
+import com.rach.firmmanagement.dataClassImp.MessageDataClass
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
@@ -363,20 +367,62 @@ class AdminRepository {
 
             Log.d("Task","$taskId, $isCommon, $employeePhone, $taskRef, $adminPhoneNumber")
 
-            // Fetch the current task data
             val snapshot = taskRef.get().await()
-            val taskData = snapshot.toObject(AddTaskDataClass::class.java)
+            Log.d("TAG", "fetched successful snapshot 1: ${snapshot.data}")
+            val taskData = parseAddTaskDataClass(snapshot)
+            Log.d("TAG", "fetched successful taskData 1: ${taskData.remarks}")
 
             // Append the new remark to the existing list
-            val updatedRemarks = taskData?.remarks?.toMutableList() ?: mutableListOf()
+            val updatedRemarks = taskData.remarks.toMutableList()
+            Log.d("TAG", "fetched successful updatedRemarks 1: ${updatedRemarks}")
             updatedRemarks.add(newRemark)
+            Log.d("TAG", "fetched successful updatedRemarks 1: ${updatedRemarks}")
+            Log.d("TAG", "fetched successful 1: ${updatedRemarks.map { remark -> remark.message }}")
 
             // Update Firestore with the new remarks list
-            taskRef.update("remarks", updatedRemarks).await()
+            taskRef.update("remarks", updatedRemarks.map { remark ->
+                mapOf(
+                    "date" to remark.date,
+                    "message" to remark.message,
+                    "person" to remark.person
+                )
+            }).await()
 
             onSuccess()
         } catch (e: Exception) {
             onFailure()
+        }
+    }
+
+    fun parseAddTaskDataClass(document: DocumentSnapshot): AddTaskDataClass {
+        return AddTaskDataClass(
+            id = document.id, // Use the document ID as the task ID
+            employeePhoneNumber = document.getString("employeePhoneNumber") ?: "",
+            assignDate = document.getString("assignDate") ?: "",
+            task = document.getString("task") ?: "",
+            submitDate = document.getString("submitDate") ?: "",
+            isCommon = document.getBoolean("isCommon") ?: false,
+            status = document.getString("status") ?: "Open",
+            remarks = parseRemarks(document.get("remarks"))
+        )
+    }
+
+    /**
+     * Manually parses a list of remarks.
+     */
+    private fun parseRemarks(remarksObject: Any?): List<Remark> {
+        return if (remarksObject is List<*>) {
+            remarksObject.mapNotNull { remark ->
+                if (remark is Map<*, *>) {
+                    Remark(
+                        date = remark["date"] as? String ?: "",
+                        message = remark["message"] as? String ?: "",
+                        person = remark["person"] as? String ?: ""
+                    )
+                } else null
+            }
+        } else {
+            emptyList()
         }
     }
 
@@ -530,7 +576,9 @@ class AdminRepository {
                             .await()
                         Log.d("Attendance", "Entries Snapshot: ${entriesSnapshot.documents}")
                         if (!entriesSnapshot.isEmpty) {
-                            val latestEntry = entriesSnapshot.documents.firstOrNull()?.toObject(PunchInPunchOut::class.java)
+                            val latestEntry = entriesSnapshot.documents.firstOrNull()?.let { document ->
+                                parsePunchInPunchOut(document)
+                            }
                             latestEntry?.let { attendanceList.add(it) }
                         }
                         calendar.add(Calendar.DATE, 1)
@@ -561,8 +609,9 @@ class AdminRepository {
                             .await()
 
                         if (!entriesSnapshot.isEmpty) {
-                            val latestEntry = entriesSnapshot.documents.firstOrNull()
-                                ?.toObject(PunchInPunchOut::class.java)
+                            val latestEntry = entriesSnapshot.documents.firstOrNull()?.let { document ->
+                                parsePunchInPunchOut(document)
+                            }
                             latestEntry?.let { attendanceList.add(it) }
                         }
                     }
@@ -574,6 +623,23 @@ class AdminRepository {
         }catch (e: Exception) {
             onFailure()
         }
+    }
+
+    private fun parsePunchInPunchOut(document: DocumentSnapshot): PunchInPunchOut {
+        return PunchInPunchOut(
+            currentTime = document.getString("currentTime"),
+            absent = document.getString("absent") ?: "Present",
+            date = document.getString("date"),
+            punchTime = document.getString("punchTime"),
+            punchOutTime = document.getString("punchOutTime"),
+            locationPunchTime = document.get("locationPunchTime")?.let {
+                // Parse GeofenceItems manually if needed
+                Gson().fromJson(it.toString(), GeofenceItems::class.java)
+            },
+            name = document.getString("name"),
+            phoneNumberString = document.getString("phoneNumberString"),
+            totalMinutes = document.getLong("totalMinutes")?.toInt() ?: 0
+        )
     }
 
     // employee profile
@@ -838,6 +904,70 @@ class AdminRepository {
             }
         }
     }
+
+
+    // chat
+
+    suspend fun sendMessage(
+        adminPhoneNumber: String,
+        employeeNumber: String,
+        message: MessageDataClass,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
+        try {
+            database.collection("Members")
+                .document(updateAdminNumber)
+                .collection("Employee")
+                .document(employeeNumber)
+                .collection("Messages")
+                .add(message)
+                .await()
+            onSuccess()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            onFailure()
+        }
+    }
+
+    suspend fun fetchMessages(
+        adminPhoneNumber: String,
+        employeeNumber: String,
+        onSuccess: (List<MessageDataClass>) -> Unit,
+        onFailure: () -> Unit
+    ): ListenerRegistration {
+        val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
+        return database.collection("Members")
+                .document(updateAdminNumber)
+                .collection("Employee")
+                .document(employeeNumber)
+                .collection("Messages")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .addSnapshotListener { snapshot, exception ->
+                    if (exception != null) {
+                        exception.printStackTrace()
+                        onFailure()
+                        return@addSnapshotListener
+                    }
+
+                    if (snapshot != null) {
+                        val messages = snapshot.toObjects(MessageDataClass::class.java)
+                        onSuccess(messages)
+                    } else {
+                        onFailure()
+                    }
+                }
+    }
+
 
 
 

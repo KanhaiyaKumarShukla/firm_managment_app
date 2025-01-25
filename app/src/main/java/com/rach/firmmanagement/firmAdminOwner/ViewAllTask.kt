@@ -81,7 +81,16 @@ fun ViewAllTask(
     }
 
     if (loading.value or employeeLoading) { // Use .value for State objects
-        CircularProgressIndicator()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
     } else {
         LazyColumn {
             items(tasks.value) { item -> // Access .value for the list
@@ -110,6 +119,13 @@ fun ViewAllTask(
                     },
                     onDeleteClick = {
                         adminViewModel.deleteTask(item)
+                    },
+                    addRealtimeRemarksListener = { onRemarksUpdated ->
+                        adminViewModel.addRealtimeRemarksListener(
+                            employeePhone = item.employeePhoneNumber,
+                            taskId = item.id,
+                            onRemarksUpdated = onRemarksUpdated
+                        )
                     }
                 )
             }
@@ -166,6 +182,13 @@ fun ViewOneEmployeeTask(
                     },
                     onDeleteClick = {
                         adminViewModel.deleteTask(item)
+                    },
+                    addRealtimeRemarksListener = { onRemarksUpdated ->
+                        adminViewModel.addRealtimeRemarksListener(
+                            employeePhone = item.employeePhoneNumber,
+                            taskId = item.id,
+                            onRemarksUpdated = onRemarksUpdated
+                        )
                     }
                 )
             }
@@ -179,6 +202,7 @@ fun ViewAllTaskDesign(
     onAddRemark: (String) -> Unit,
     fetchRemarks: suspend () -> List<Remark>,
     onDeleteClick: () -> Unit,
+    addRealtimeRemarksListener: (onRemarksUpdated: (List<Remark>) -> Unit) -> Unit
 
 ) {
 
@@ -191,7 +215,10 @@ fun ViewAllTaskDesign(
 
     LaunchedEffect(Unit) {
         // This will run when the composable is first composed or recomposed
-        remarks = fetchRemarks()
+        addRealtimeRemarksListener { updatedRemarks ->
+            remarks = updatedRemarks
+        }
+        //remarks = fetchRemarks()
         Log.d("Task", "RemarkCount: ${remarks.size}")
     }
 

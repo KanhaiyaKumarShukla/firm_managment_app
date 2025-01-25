@@ -1,11 +1,11 @@
 package com.rach.firmmanagement.dataClassImp
 
-data class EmployeeSectionData(
+data class EmployeeLeaveData(
     val type:String? ="",
     val startingDate :String? ="",
     val endDate:String? ="",
     val reason:String?= "",
-    val status:Boolean? = false,
+    val status:Int? = 0,
     val currentDate:String?= "",
     val emlPhoneNumber:String? =""
 )
@@ -15,7 +15,7 @@ data class AdvanceMoneyData(
     val amount:String? ="",
     val date:String? = "",
     val emplPhoneNumber:String?="",
-    val status: Boolean? = false,
+    val status: Int? = 0,
     val time:String? =""
 )
 
@@ -25,7 +25,7 @@ data class PunchInPunchOut(
     val date:String?="",
     val punchTime:String?="",
     val punchOutTime:String?="",
-    val locationPunchTime:String?="",
+    val locationPunchTime: GeofenceItems?= GeofenceItems(),
     val name:String?="",
     val phoneNumberString: String?="",
     val totalMinutes:Int=0
