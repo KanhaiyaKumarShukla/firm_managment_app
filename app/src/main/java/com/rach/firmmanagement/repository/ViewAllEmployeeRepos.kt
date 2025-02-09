@@ -2,7 +2,10 @@ package com.rach.firmmanagement.repository
 
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
+import com.rach.firmmanagement.dataClassImp.GeofenceItems
 import com.rach.firmmanagement.dataClassImp.OutForWork
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
@@ -14,21 +17,25 @@ class ViewAllEmployeeRepos {
     val currentUserPhoneNumber = FirebaseAuth.getInstance().currentUser?.phoneNumber.toString()
 
     suspend fun viewAllEmployee(
-        viewAllEmployeeDataClass: ViewAllEmployeeDataClass,
-        onSuccess: (List<ViewAllEmployeeDataClass>) -> Unit,
+        firmName: String,
+        onSuccess: (List<AddStaffDataClass>) -> Unit,
         onFailure: () -> Unit
     ) {
 
+        val tag ="allEmployee"
+
         try {
-            val data = database.collection("Members")
-                .document(currentUserPhoneNumber)
+            val data = database.collection("Firms")
+                .document(firmName)
                 .collection("Employee")
                 .get()
                 .await()
 
+            Log.d(tag, "Data: ${data.documents}")
 
             if (!data.isEmpty) {
-                val employeeList = data.documents.map { document ->
+                val employeeDetailsList = mutableListOf<AddStaffDataClass>()
+                /*val employeeList = data.documents.map { document ->
 
                     ViewAllEmployeeDataClass(
                         name = document.getString("name"),
@@ -36,9 +43,58 @@ class ViewAllEmployeeRepos {
                         role = document.getString("role")
                     )
 
+                }*/
+
+                for (document in data.documents) {
+                    Log.d(tag, "Document: ${document.data}")
+                    val phoneNumber = document.getString("phoneNumber") ?: continue
+
+                    Log.d(tag, "Phone Number: $phoneNumber")
+
+                    val employeeDetails = database.collection("Employee")
+                        .document(phoneNumber)
+                        .get()
+                        .await()
+
+                    Log.d(tag, "Employee Details: ${employeeDetails.data}")
+
+                    if (employeeDetails.exists()) {
+                        val details = AddStaffDataClass(
+                            name = employeeDetails.getString("name"),
+                            phoneNumber = employeeDetails.getString("phoneNumber"),
+                            newPhoneNumber = employeeDetails.getString("newPhoneNumber"),
+                            role = employeeDetails.getString("role"),
+                            salary = employeeDetails.getString("salary"),
+                            salaryUnit = employeeDetails.getString("salaryUnit"),
+                            registrationDate = employeeDetails.getString("registrationDate"),
+                            timeVariation = employeeDetails.getString("timeVariation"),
+                            timeVariationUnit = employeeDetails.getString("timeVariationUnit"),
+                            leaveDays = employeeDetails.getString("leaveDays"),
+                            firmName = employeeDetails.getString("firmName"),
+                            adminNumber = employeeDetails.getString("adminNumber"),
+                            workPlace = employeeDetails.get("workPlace")?.let { locationData ->
+                                if (locationData is Map<*, *>) {
+                                    GeofenceItems(
+                                        title = locationData["title"] as? String,
+                                        latitude = locationData["latitude"] as? String,
+                                        longitude = locationData["longitude"] as? String,
+                                        radius = locationData["radius"] as? String,
+                                        adminNo = locationData["adminNo"] as? String,
+                                        firmName = locationData["firmName"] as? String
+                                    )
+                                } else {
+                                    GeofenceItems()
+                                }
+                            } ?: GeofenceItems()
+                        )
+                        Log.d(tag, "Details: $details")
+
+                        employeeDetailsList.add(details)
+                    }
                 }
-                Log.d("Task", employeeList.toString())
-                onSuccess(employeeList)
+
+                Log.d(tag, employeeDetailsList.toString())
+                onSuccess(employeeDetailsList)
             } else {
                 onFailure()
             }
@@ -50,20 +106,192 @@ class ViewAllEmployeeRepos {
 
     }
 
-    suspend fun deleteEmployee(phoneNumber: String) {
+
+    suspend fun viewAllAdmin(
+        firmName: String,
+        onSuccess: (List<AddStaffDataClass>) -> Unit,
+        onFailure: () -> Unit
+    ) {
+
+        val tag="allAdmin"
         try {
-            database.collection("Members")
-                .document(currentUserPhoneNumber)
-                .collection("Employee")
+            val data = database.collection("Firms")
+                .document(firmName)
+                .collection("Admin")
+                .get()
+                .await()
+
+            Log.d(tag, "Data: ${data.documents}")
+
+            if (!data.isEmpty) {
+                val employeeDetailsList = mutableListOf<AddStaffDataClass>()
+
+                for (document in data.documents) {
+                    Log.d(tag, "Document: ${document.data}")
+                    val phoneNumber = document.getString("phoneNumber") ?: continue
+                    Log.d(tag, "Phone Number: $phoneNumber")
+
+                    val employeeDetails = database.collection("Employee")
+                        .document(phoneNumber)
+                        .get()
+                        .await()
+                    Log.d(tag, "Employee Details: ${employeeDetails.data}")
+
+                    if (employeeDetails.exists()) {
+                        val details = AddStaffDataClass(
+                            name = employeeDetails.getString("name"),
+                            phoneNumber = employeeDetails.getString("phoneNumber"),
+                            newPhoneNumber = employeeDetails.getString("newPhoneNumber"),
+                            role = employeeDetails.getString("role"),
+                            salary = employeeDetails.getString("salary"),
+                            salaryUnit = employeeDetails.getString("salaryUnit"),
+                            registrationDate = employeeDetails.getString("registrationDate"),
+                            timeVariation = employeeDetails.getString("timeVariation"),
+                            timeVariationUnit = employeeDetails.getString("timeVariationUnit"),
+                            leaveDays = employeeDetails.getString("leaveDays"),
+                            firmName = employeeDetails.getString("firmName"),
+                            adminNumber = employeeDetails.getString("adminNumber"),
+                            workPlace = employeeDetails.get("workPlace")?.let { locationData ->
+                                if (locationData is Map<*, *>) {
+                                    GeofenceItems(
+                                        title = locationData["title"] as? String,
+                                        latitude = locationData["latitude"] as? String,
+                                        longitude = locationData["longitude"] as? String,
+                                        radius = locationData["radius"] as? String,
+                                        adminNo = locationData["adminNo"] as? String,
+                                        firmName = locationData["firmName"] as? String
+                                    )
+                                } else {
+                                    GeofenceItems()
+                                }
+                            } ?: GeofenceItems()
+                        )
+
+                        employeeDetailsList.add(details)
+                    }
+                }
+                Log.d(tag, "DetailsList: $employeeDetailsList")
+
+                if (employeeDetailsList.isNotEmpty()) {
+                    onSuccess(employeeDetailsList)
+                } else {
+                    onFailure()
+                }
+            } else {
+                onFailure()
+            }
+
+        } catch (_: Exception) {
+            onFailure()
+        }
+
+
+    }
+
+    suspend fun deleteEmployee(phoneNumber: String, onSuccess: () -> Unit, onFailure: () -> Unit) {
+        try {
+            database.collection("Employee")
                 .document(phoneNumber) // employee ko phoneNumber se identify karenge
                 .delete()
                 .await()
+
+            database.collection("Gender")
+                .get()
+                .addOnSuccessListener { documents ->
+                    val document = documents.documents.firstOrNull()
+                    if (document != null) {
+                        val genderDocRef = database.collection("Gender").document(document.id)
+
+                        // Use FieldValue.delete() to remove the phone number key
+                        genderDocRef.update(mapOf(phoneNumber to FieldValue.delete()))
+                            .addOnSuccessListener {
+                                onSuccess()
+                                Log.d("Firestore", "Phone number $phoneNumber removed successfully")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("Firestore", "Failed to remove phone number: ${e.message}")
+                            }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("Firestore", "Failed to fetch document: ${e.message}")
+                }
+
 
         } catch (e: Exception) {
             e.printStackTrace()
             // Handle failure
         }
 
+    }
+    suspend fun updateEmployeesToAdmin(
+        selectedEmployees: List<AddStaffDataClass>,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+        try {
+            selectedEmployees.forEach { employee ->
+                val genderCollection = database.collection("Gender")
+                genderCollection.get()
+                    .addOnSuccessListener { documents ->
+                        val document = documents.documents.firstOrNull()
+                        if (document != null) {
+                            val genderDocRef = genderCollection.document(document.id)
+                            genderDocRef.update(mapOf(employee.phoneNumber to "Admin"))
+                        }
+                    }
+
+                val employeeRef = database.collection("Employee").document(employee.phoneNumber.toString())
+                employeeRef.update("role", "Admin")
+                    .addOnSuccessListener { onSuccess() }
+                    .addOnFailureListener { onFailure() }
+
+                val firmRef = database.collection("Firms").document(employee.firmName.toString())
+
+                if (employee.role != "Admin") {
+                    val employeeRef = firmRef
+                        .collection(employee.role.toString())
+                        .document(employee.phoneNumber.toString())
+
+                    val adminRef = firmRef
+                        .collection("Admin")
+                        .document(employee.phoneNumber.toString())
+
+                    Log.d("Firestore", "Ref: ${adminRef.path}, ${employeeRef.path}")
+
+                    // Get the employee data before deleting
+                    employeeRef.get().addOnSuccessListener { document ->
+                        Log.d("Firestore", "Document: $document")
+                        if (document.exists()) {
+                            val updatedEmployee = employee.copy(role = "Admin") // Update role to Admin
+
+                            Log.d("Firestore", "Updated Employee: $updatedEmployee")
+
+                            // Add employee to Admin collection
+                            adminRef.set(updatedEmployee)
+                                .addOnSuccessListener {
+                                    // Delete from the original role collection after successful addition
+                                    employeeRef.delete()
+                                        .addOnSuccessListener {
+                                            Log.d("Firestore", "Successfully moved to Admin")
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Log.e("Firestore", "Failed to delete from previous role: ${e.message}")
+                                        }
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("Firestore", "Failed to add employee to Admin: ${e.message}")
+                                }
+                        }
+                    }.addOnFailureListener { e ->
+                        Log.e("Firestore", "Failed to fetch employee: ${e.message}")
+                    }
+                }
+
+            }
+        }catch (e:Exception){
+            onFailure()
+        }
     }
 
     suspend fun getPunchInOutAttendanceForAllEmployees(

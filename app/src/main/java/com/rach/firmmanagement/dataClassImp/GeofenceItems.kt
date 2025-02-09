@@ -5,6 +5,6 @@ data class GeofenceItems(
     val latitude: String? = null,
     val longitude: String? = null,
     val radius: String? = null,
-    var adminNo: String? = null,
-    val empNo: String? = null
+    val firmName: String? = null,
+    var adminNo: String? = null
 )

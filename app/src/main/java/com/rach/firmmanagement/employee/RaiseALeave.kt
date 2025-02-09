@@ -43,6 +43,7 @@ import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.ui.theme.progressBarBgColor
 import com.rach.firmmanagement.viewModel.EmployeeViewModel1
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -51,7 +52,8 @@ import java.util.*
 fun LeaveRequestScreen(
     employeeViewModel1: EmployeeViewModel1 = viewModel(),
     loginViewModel: LoginViewModel,
-    onViewLeaveHistoryClick: () -> Unit
+    onViewLeaveHistoryClick: () -> Unit,
+    profileViewModel: ProfileViewModel=viewModel()
 ) {
 
     val leaveType by employeeViewModel1.leaveType.collectAsState()
@@ -61,6 +63,8 @@ fun LeaveRequestScreen(
     val state by employeeViewModel1.circularBarState.collectAsState()
     val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
 
     val scrollState = rememberScrollState()
 
@@ -68,6 +72,10 @@ fun LeaveRequestScreen(
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
+
+    LaunchedEffect(Unit) {
+        profileViewModel.getEmployeeIdentity()
+    }
 
     fun showDatePickerDialog(onDateSelected: (String) -> Unit) {
 
@@ -77,7 +85,7 @@ fun LeaveRequestScreen(
               selectedYear,
               selectedMonth,
               selectedDay ->
-                onDateSelected("$selectedDay/${selectedMonth + 1}/$selectedYear")
+                onDateSelected("$selectedDay-${selectedMonth + 1}-$selectedYear")
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
@@ -88,171 +96,190 @@ fun LeaveRequestScreen(
     }
 
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
+    if(loading || employeeIdentity.firmName==""){
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
-                .background(Color.White)
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .wrapContentSize(Alignment.Center)
         ) {
-            Text(
-                text = "Leave Request",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                ),
-                modifier = Modifier.padding(bottom = 16.dp)
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
             )
-
-            // Leave Type Dropdown
-            OutlinedTextField(
-                value = leaveType,
-                onValueChange = { employeeViewModel1.onChangeLeaveType(it) },
-                label = { Text("Leave Type") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Start Date Field
-            OutlinedTextField(
-                value = startDate,
-                onValueChange = { employeeViewModel1.onChangeStartingDate(it) },
-                label = { Text("Start Date") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-
-                shape = RoundedCornerShape(8.dp),
-                trailingIcon = {
-                    IconButton(onClick = {
-                        showDatePickerDialog {
-                            employeeViewModel1.onChangeStartingDate(
-                                it
-                            )
-                        }
-                    }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendar),
-                            contentDescription = "start Date"
-                        )
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // End Date Field
-            OutlinedTextField(
-                value = endDate,
-                onValueChange = { employeeViewModel1.onChangeEndDate(it) },
-                label = { Text("End Date") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-
-                shape = RoundedCornerShape(8.dp),
-                trailingIcon = {
-                    IconButton(onClick = {
-
-                        showDatePickerDialog { employeeViewModel1.onChangeEndDate(it) }
-                    }) {
-
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendar),
-                            contentDescription = "start Date"
-                        )
-
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Reason Field
-            OutlinedTextField(
-                value = reason,
-                onValueChange = { employeeViewModel1.onChangeReason(it) },
-                label = { Text("Reason") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp),
-                shape = RoundedCornerShape(8.dp),
-                maxLines = 5
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Submit Button
-            Button(
-                onClick = {
-                    scope.launch {
-                        if (leaveType.isNotEmpty() && reason.isNotEmpty() && startDate.isNotEmpty() && endDate.isNotEmpty()) {
-
-                            employeeViewModel1.raiseALeave(
-                                adminPhoneNumber = adminPhoneNumber,
-                                onSuccess = {
-                                    val notification = MyNotification(
-                                        context = context,
-                                        title = "Firm Management App",
-                                        message = "Request Added"
-                                    )
-                                    notification.fireNotification()
-
-                                },
-                                onFailure = {
-
-                                    val notification = MyNotification(
-                                        context = context,
-                                        title = "Firm Management App",
-                                        message = "Request Added Failed"
-                                    )
-                                    notification.fireNotification()
-
-                                }
-                            )
-
-                        } else {
-                            Toast.makeText(context, "Please Fill all the fields", Toast.LENGTH_LONG)
-                                .show()
-                        }
-                    }
-                },
-                modifier = Modifier.width(120.dp),
-                colors = ButtonDefaults.buttonColors(
-                    blueAcha
-                )
-            ) {
-
-                Text(
-                    text = "Submit",
-                    color = Color.White,
-                    style = fontBablooBold
-                )
-
-            }
         }
-        CustomButton(
-            text= "View Leave History",
-            onClick = onViewLeaveHistoryClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(16.dp)
-        )
-
-        if (state) {
-            Box(
+    } else {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(progressBarBgColor.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
+                    .padding(16.dp)
+                    .background(Color.White)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                CircularProgressIndicator()
-            }
+                Text(
+                    text = "Leave Request",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
+                // Leave Type Dropdown
+                OutlinedTextField(
+                    value = leaveType,
+                    onValueChange = { employeeViewModel1.onChangeLeaveType(it) },
+                    label = { Text("Leave Type") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Start Date Field
+                OutlinedTextField(
+                    value = startDate,
+                    onValueChange = { employeeViewModel1.onChangeStartingDate(it) },
+                    label = { Text("Start Date") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+
+                    shape = RoundedCornerShape(8.dp),
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            showDatePickerDialog {
+                                employeeViewModel1.onChangeStartingDate(
+                                    it
+                                )
+                            }
+                        }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.calendar),
+                                contentDescription = "start Date"
+                            )
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // End Date Field
+                OutlinedTextField(
+                    value = endDate,
+                    onValueChange = { employeeViewModel1.onChangeEndDate(it) },
+                    label = { Text("End Date") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+
+                    shape = RoundedCornerShape(8.dp),
+                    trailingIcon = {
+                        IconButton(onClick = {
+
+                            showDatePickerDialog { employeeViewModel1.onChangeEndDate(it) }
+                        }) {
+
+                            Icon(
+                                painter = painterResource(id = R.drawable.calendar),
+                                contentDescription = "start Date"
+                            )
+
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Reason Field
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { employeeViewModel1.onChangeReason(it) },
+                    label = { Text("Reason") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    maxLines = 5
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Submit Button
+                Button(
+                    onClick = {
+                        scope.launch {
+                            if (leaveType.isNotEmpty() && reason.isNotEmpty() && startDate.isNotEmpty() && endDate.isNotEmpty()) {
+
+                                employeeViewModel1.raiseALeave(
+                                    adminPhoneNumber = employeeIdentity.adminNumber.toString(),
+                                    firmName = employeeIdentity.firmName.toString(),
+                                    onSuccess = {
+                                        val notification = MyNotification(
+                                            context = context,
+                                            title = "Firm Management App",
+                                            message = "Request Added"
+                                        )
+                                        notification.fireNotification()
+
+                                    },
+                                    onFailure = {
+
+                                        val notification = MyNotification(
+                                            context = context,
+                                            title = "Firm Management App",
+                                            message = "Request Added Failed"
+                                        )
+                                        notification.fireNotification()
+
+                                    }
+                                )
+
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Please Fill all the fields",
+                                    Toast.LENGTH_LONG
+                                )
+                                    .show()
+                            }
+                        }
+                    },
+                    modifier = Modifier.width(120.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        blueAcha
+                    )
+                ) {
+
+                    Text(
+                        text = "Submit",
+                        color = Color.White,
+                        style = fontBablooBold
+                    )
+
+                }
+            }
+            CustomButton(
+                text = "View Leave History",
+                onClick = onViewLeaveHistoryClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+            )
+
+            if (state) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(progressBarBgColor.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+
+            }
         }
     }
 }
@@ -260,7 +287,8 @@ fun LeaveRequestScreen(
 @Composable
 fun ViewLeaveHistory(
     employeeViewModel1: EmployeeViewModel1 = viewModel(),
-    loginViewModel: LoginViewModel
+    loginViewModel: LoginViewModel,
+    profileViewModel: ProfileViewModel
 ) {
     val leaveRequests by employeeViewModel1.leaves.collectAsState(initial = emptyList())
     val loading by employeeViewModel1.circularBarState.collectAsState()
@@ -269,8 +297,10 @@ fun ViewLeaveHistory(
     val selectedMonth by employeeViewModel1.selectedLeaveMonth.collectAsState()
     val fromDate by employeeViewModel1.selectedLeaveFromDate.collectAsState()
     val toDate by employeeViewModel1.selectedLeaveToDate.collectAsState()
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val identityLoading by profileViewModel.loading
 
-    val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
+    val adminPhoneNumber = employeeIdentity.adminNumber.toString()
 
     // Get current year
     val currentYear = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) }
@@ -288,7 +318,7 @@ fun ViewLeaveHistory(
         )
     }
 
-    if (loading) {
+    if (loading || identityLoading) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

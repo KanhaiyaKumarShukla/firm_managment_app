@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -133,7 +135,16 @@ fun OtpScreen(
     }
 
     if (showProgressState){
-        LoadProgressBar()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
     }else{
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -150,7 +161,7 @@ fun OtpScreen(
             CustomOutlinedTextFiled(
                 value = otpText,
                 onValueChange = {
-                                loginViewModel.onChangeOtp(it)
+                    loginViewModel.onChangeOtp(it)
                 },
                 label = "Enter OTP",
                 singleLine = true ,

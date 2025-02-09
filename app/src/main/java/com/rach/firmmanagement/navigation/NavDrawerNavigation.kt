@@ -30,6 +30,7 @@ import com.rach.firmmanagement.repository.HolidayViewModelFactory
 import com.rach.firmmanagement.viewModel.EmlAllTask
 import com.rach.firmmanagement.viewModel.HolidayViewModel
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -43,6 +44,7 @@ fun NavDrawerNavigation(
 
     val viewModel2: LoginViewModel = viewModel()
     val emlViewModel:EmlAllTask = viewModel()
+    val profileViewModel: ProfileViewModel = viewModel()
 
 
     NavHost(
@@ -55,13 +57,15 @@ fun NavDrawerNavigation(
 
             HomeScreenDataLoad(
                 loginViewModel = viewModel2,
-                navigateToRaise = { navController.navigate("RaiseRequest")})
+                navigateToRaise = { navController.navigate("RaiseRequest")}
+            )
 
         }
 
         composable(Screen.BottomScreen.Another.route) {
 
-            AnotherRouter()
+            // AnotherRouter()
+            EmplNavigation()
 
         }
         composable(Screen.DrawerScreen.Profile.route) {
@@ -69,16 +73,19 @@ fun NavDrawerNavigation(
 
         }
         composable(Screen.DrawerScreen.About.route) {
-            AddWorkHoursScreen()
+            // AddWorkHoursScreen()
 
         }
 
         composable(Screen.DrawerScreen.ContactUs.route) {
+            /*
             PunchInOutApp(
                 viewModel = emlViewModel,
                 loginViewModel = loginViewModel,
                 navigateToEmployeeAttendence = {navController.navigate(ScreensManage.AttendanceSummary.route)}
             )
+
+             */
 
         }
 
@@ -94,8 +101,7 @@ fun NavDrawerNavigation(
         // AdminPanel Navigation
 
         composable("SeeTask") {
-            SeeTasks(viewModel = emlViewModel,
-                loginViewModel = viewModel2)
+            SeeTasks(viewModel = emlViewModel, profileViewModel = profileViewModel)
         }
 
 

@@ -26,52 +26,72 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.MessageDataClass
 import com.rach.firmmanagement.employee.InputMessageBar
 import com.rach.firmmanagement.employee.MessageList
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
+import com.rach.firmmanagement.ui.theme.blueAcha
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.launch
 
 @Composable
 fun AdminChatScreen(
     adminViewModel: AdminViewModel = viewModel(),
-    allEmployeeViewModel: AllEmployeeViewModel = viewModel()
+    allEmployeeViewModel: AllEmployeeViewModel,
+    profileViewModel: ProfileViewModel
 ) {
     val messages by adminViewModel.messages.collectAsState()
+    val messageLoading by adminViewModel.messageLoading.collectAsState()
     val inputMessage by adminViewModel.inputMessage.collectAsState()
-    val selectedEmployees = remember { mutableStateOf(setOf<ViewAllEmployeeDataClass>()) }
+    val selectedEmployees = remember { mutableStateOf(setOf<AddStaffDataClass>()) }
     val employees = allEmployeeViewModel.employeeList.value
+    val employeeLoading by allEmployeeViewModel.isEmployeeLoading
     val employeeNumber = adminViewModel.adminPhoneNumber // Assuming this comes from the ViewModel
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val identity by profileViewModel.loading
 
-    AdminMessageScreen(
-        messages = messages,
-        employees = employees,
-        selectedEmployees = selectedEmployees,
-        inputMessage = inputMessage,
-        employeeNumber = employeeNumber,
-        onMessageChange = adminViewModel::onChangeMessage,
-        onSendMessage = {
-            if (inputMessage.isNotEmpty() && selectedEmployees.value.isNotEmpty()) {
-                adminViewModel.sendMessage(
-                    selectedEmployees = selectedEmployees.value,
-                    message = MessageDataClass(
-                        senderName = employeeNumber,
-                        receiverName = selectedEmployees.value.joinToString { it.phoneNumber.toString() },
-                        message = inputMessage,
-                        timestamp = System.currentTimeMillis()
-                    )
-                )
-                adminViewModel.onChangeMessage("")
-            }
+    if (employeeLoading || identity || messageLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
         }
-    )
+    }else {
+        AdminMessageScreen(
+            messages = messages,
+            employees = employees,
+            selectedEmployees = selectedEmployees,
+            inputMessage = inputMessage,
+            employeeNumber = employeeNumber,
+            onMessageChange = adminViewModel::onChangeMessage,
+            onSendMessage = {
+                if (inputMessage.isNotEmpty() && selectedEmployees.value.isNotEmpty()) {
+                    adminViewModel.sendMessage(
+                        selectedEmployees = selectedEmployees.value,
+                        message = MessageDataClass(
+                            senderName = employeeNumber,
+                            receiverName = selectedEmployees.value.joinToString { it.phoneNumber.toString() },
+                            message = inputMessage,
+                            timestamp = System.currentTimeMillis()
+                        )
+                    )
+                    adminViewModel.onChangeMessage("")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 fun AdminMessageScreen(
     messages: List<MessageDataClass>,
-    employees: List<ViewAllEmployeeDataClass>,
-    selectedEmployees: MutableState<Set<ViewAllEmployeeDataClass>>,
+    employees: List<AddStaffDataClass>,
+    selectedEmployees: MutableState<Set<AddStaffDataClass>>,
     inputMessage: String,
     employeeNumber: String,
     onMessageChange: (String) -> Unit,

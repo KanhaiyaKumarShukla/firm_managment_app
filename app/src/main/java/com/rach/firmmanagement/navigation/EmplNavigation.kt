@@ -1,5 +1,7 @@
 package com.rach.firmmanagement.navigation
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -21,7 +23,9 @@ import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.EmlAllTask
 import com.rach.firmmanagement.viewModel.EmployeeViewModel1
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun EmplNavigation() {
 
@@ -29,8 +33,8 @@ fun EmplNavigation() {
     
     val loginViewModel:LoginViewModel = viewModel()
     val emlViewModel:EmlAllTask = viewModel()
-    val employeename : AllEmployeeViewModel=viewModel()
     val employeeViewModel : EmployeeViewModel1=viewModel()
+    val profileViewModel: ProfileViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -40,7 +44,7 @@ fun EmplNavigation() {
         composable(ScreensManage.EmployeeHomeScreen.route) {
             EmployeeHomeScreen(
                 viewmodel = emlViewModel,
-                loginViewModel = loginViewModel,
+                profileViewModel = profileViewModel,
                 navigateToSeeTask = { navController.navigate(ScreensManage.goToTask.route) },
                 navigateToRaiseLeave = { navController.navigate(ScreensManage.RaiseAHoliday.route) },
                 navigateToAdvanceMoney = { navController.navigate(ScreensManage.AdvanceMoney.route) },
@@ -53,7 +57,7 @@ fun EmplNavigation() {
         }
         
         composable(ScreensManage.goToTask.route){
-            SeeTasks(viewModel = emlViewModel , loginViewModel = loginViewModel)
+            SeeTasks(viewModel = emlViewModel , profileViewModel = profileViewModel)
         }
         
         composable(ScreensManage.RaiseAHoliday.route){
@@ -65,7 +69,7 @@ fun EmplNavigation() {
             
         }
         composable(ScreensManage.ViewLeaveHistory.route){
-            ViewLeaveHistory(loginViewModel = loginViewModel)
+            ViewLeaveHistory(loginViewModel = loginViewModel, profileViewModel = profileViewModel)
         }
 
         composable(ScreensManage.ViewAdvanceHistory.route){
@@ -82,22 +86,22 @@ fun EmplNavigation() {
         composable(ScreensManage.PunchInOut.route){
             PunchInOutApp(
                 viewModel = emlViewModel,
-                loginViewModel = loginViewModel,
+                profileViewModel = profileViewModel,
                 navigateToEmployeeAttendence = {navController.navigate(ScreensManage.AttendanceSummary.route)}
             )
         }
         
         composable(ScreensManage.AttendanceSummary.route){
-            EmployAttendance(loginViewModel = loginViewModel, employeeViewModel = employeeViewModel)
+            EmployAttendance(loginViewModel = loginViewModel, employeeViewModel = employeeViewModel, profileViewModel = profileViewModel)
         }
         composable(ScreensManage.RaiseExpense.route){
             RaiseExpense(loginViewModel = loginViewModel)
         }
         composable(ScreensManage.AllExpense.route){
-            AllExpense(loginViewModel = loginViewModel)
+            AllExpense(loginViewModel = loginViewModel, profileViewModel = profileViewModel)
         }
         composable(ScreensManage.ChatScreen.route){
-            ChatScreen(loginViewModel = loginViewModel)
+            ChatScreen(loginViewModel = loginViewModel, profileViewModel = profileViewModel)
         }
     }
 

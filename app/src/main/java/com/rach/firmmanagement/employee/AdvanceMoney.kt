@@ -37,6 +37,7 @@ import com.rach.firmmanagement.dataClassImp.AdvanceMoneyData
 import com.rach.firmmanagement.firmAdminOwner.CustomButton
 import com.rach.firmmanagement.firmAdminOwner.showDateRangePicker
 import com.rach.firmmanagement.firmAdminOwner.showMonthPicker
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +45,8 @@ import com.rach.firmmanagement.firmAdminOwner.showMonthPicker
 fun AdvanceMoneyRequestScreen(
     viewModel1: EmployeeViewModel1 = viewModel(),
     loginViewModel: LoginViewModel,
-    onViewAdvanceHistoryClick:() -> Unit
+    onViewAdvanceHistoryClick:() -> Unit,
+    profileViewModel: ProfileViewModel=viewModel()
 ) {
     val context = LocalContext.current
     val amount by viewModel1.amount.collectAsState()
@@ -52,111 +54,140 @@ fun AdvanceMoneyRequestScreen(
     val state by viewModel1.circularBarState.collectAsState()
     val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
     val scope = rememberCoroutineScope()
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
 
-    Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Column(
+    LaunchedEffect(Unit) {
+        profileViewModel.getEmployeeIdentity()
+    }
+
+    if(loading || employeeIdentity.firmName==""){
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .wrapContentSize(Alignment.Center)
         ) {
-            Text(
-                text = "Advance Money Request",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                ),
-                modifier = Modifier.padding(bottom = 16.dp)
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
             )
-
-            // Amount Field
-            OutlinedTextField(
-                value = amount,
-                onValueChange = { viewModel1.onChangeAmount(it) },
-                label = { Text("Requested Amount") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-
-                shape = RoundedCornerShape(8.dp),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Reason Field
-            OutlinedTextField(
-                value = reason,
-                onValueChange = { viewModel1.onChangeResAdvance(it) },
-                label = { Text("Reason") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp),
-                shape = RoundedCornerShape(8.dp),
-                maxLines = 5
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Submit Button
-            Button(
-                onClick = {
-                          scope.launch {
-                              if (amount.isEmpty() && reason.isEmpty()){
-                                  Toast.makeText(context,"Please Fill all the fields",Toast.LENGTH_LONG).show()
-                              }else{
-
-                                  viewModel1.advanceMoney(
-                                      adminPhoneNumber = adminPhoneNumber,
-                                      onSuccess = {
-                                          val notification = MyNotification(context,
-                                              title = "Firm Management App",
-                                              message = "Request Added")
-
-                                          notification.fireNotification()
-                                      },
-                                      onFailure = {
-                                          val notification = MyNotification(context,
-                                              title = "Firm Management App",
-                                              message = "Request Added Failed")
-
-                                          notification.fireNotification()
-                                      }
-                                  )
-
-                              }
-                          }
-                },
-                modifier = Modifier.width(120.dp),
-                colors = ButtonDefaults.buttonColors(
-                    blueAcha
-                )
-            ) {
-
-                Text(
-                    text = "Submit",
-                    color = Color.White,
-                    style = fontBablooBold
-                )
-
-            }
         }
-        CustomButton(
-            text = "View Advance History",
-            onClick = onViewAdvanceHistoryClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-
-        )
-
-        if (state) {
-            Box(
+    } else {
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(progressBarBgColor.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
+                    .background(Color.White),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                CircularProgressIndicator()
+                Text(
+                    text = "Advance Money Request",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Amount Field
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { viewModel1.onChangeAmount(it) },
+                    label = { Text("Requested Amount") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+
+                    shape = RoundedCornerShape(8.dp),
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Reason Field
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { viewModel1.onChangeResAdvance(it) },
+                    label = { Text("Reason") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    maxLines = 5
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Submit Button
+                Button(
+                    onClick = {
+                        scope.launch {
+                            if (amount.isEmpty() && reason.isEmpty()) {
+                                Toast.makeText(
+                                    context,
+                                    "Please Fill all the fields",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+
+                                viewModel1.advanceMoney(
+                                    adminPhoneNumber = adminPhoneNumber,
+                                    firmName = employeeIdentity.firmName.toString(),
+                                    onSuccess = {
+                                        val notification = MyNotification(
+                                            context,
+                                            title = "Firm Management App",
+                                            message = "Request Added"
+                                        )
+
+                                        notification.fireNotification()
+                                    },
+                                    onFailure = {
+                                        val notification = MyNotification(
+                                            context,
+                                            title = "Firm Management App",
+                                            message = "Request Added Failed"
+                                        )
+
+                                        notification.fireNotification()
+                                    }
+                                )
+
+                            }
+                        }
+                    },
+                    modifier = Modifier.width(120.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        blueAcha
+                    )
+                ) {
+
+                    Text(
+                        text = "Submit",
+                        color = Color.White,
+                        style = fontBablooBold
+                    )
+
+                }
+            }
+            CustomButton(
+                text = "View Advance History",
+                onClick = onViewAdvanceHistoryClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+
+            )
+
+            if (state) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(progressBarBgColor.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
     }

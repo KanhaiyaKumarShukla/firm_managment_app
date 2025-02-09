@@ -238,7 +238,7 @@ fun AddRequest(
                     noAdminViewModel.raiseRequest(
                         onSuccess = {
                             noAdminViewModel.onChangeState(false)
-                            Toast.makeText(context, "Request Added", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Added", Toast.LENGTH_LONG).show()
                         },
                         onFailure = {
                             noAdminViewModel.onChangeState(false)
@@ -254,7 +254,7 @@ fun AddRequest(
             )
         ) {
 
-            Text(text = "Raise A Request", style = fontBablooBold)
+            Text(text = "Add Firm", style = fontBablooBold)
 
         }
 

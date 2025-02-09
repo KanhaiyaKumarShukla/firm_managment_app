@@ -28,6 +28,7 @@ import com.rach.firmmanagement.login.RegisterScreen
 import com.rach.firmmanagement.navigationDrawer.Screen
 import com.rach.firmmanagement.viewModel.EmlAllTask
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 
 //@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("NewApi")
@@ -39,6 +40,7 @@ fun NavigationFirst() {
     val emViewModel :EmlAllTask = viewModel()
 
     val currentUser = FirebaseAuth.getInstance().currentUser
+    val profileViewModel: ProfileViewModel = viewModel()
 
 
 
@@ -79,15 +81,17 @@ fun NavigationFirst() {
 
         composable(ScreensManage.HomeLogi.route) {
 
-            HomeScreen(loginViewModel = viewModel) {
-
-                navController.navigate(ScreensManage.PhoneLogin.route){
-                    popUpTo(ScreensManage.HomeLogi.route){
-                        inclusive = true
+            HomeScreen(
+                loginViewModel = viewModel,
+                navigateToLogin = {
+                    navController.navigate(ScreensManage.PhoneLogin.route) {
+                        popUpTo(ScreensManage.HomeLogi.route) {
+                            inclusive = true
+                        }
                     }
                 }
 
-            }
+            )
             BackHandler {
                 navController.popBackStack()
             }
@@ -114,7 +118,7 @@ fun NavigationFirst() {
         composable("SeeTask"){
             SeeTasks(
                 viewModel = emViewModel,
-                loginViewModel = viewModel
+                profileViewModel = profileViewModel
             )
         }
 

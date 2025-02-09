@@ -1,8 +1,6 @@
 package com.rach.firmmanagement.firmAdminOwner
 
-import android.graphics.Color
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
@@ -30,9 +28,11 @@ import com.rach.firmmanagement.viewModel.AddWorkHourViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.CircularProgressIndicator
-import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.notification.MyNotification
+import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 
 /*
 @RequiresApi(Build.VERSION_CODES.O)
@@ -247,7 +247,8 @@ fun GetWorkHours(
 
 fun AddWorkHoursScreen(
     workViewModel: AddWorkHourViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
-    employeeViewModel: AllEmployeeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    allEmployeeViewModel: AllEmployeeViewModel,
+    profileViewModel: ProfileViewModel
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -255,17 +256,24 @@ fun AddWorkHoursScreen(
     val date by workViewModel.date.collectAsState()
     val startTime by workViewModel.startTime.collectAsState()
     val endTime by workViewModel.endTime.collectAsState()
-    val selectedEmployees = remember { mutableStateOf(setOf<ViewAllEmployeeDataClass>()) }
-    val employees = employeeViewModel.employeeList.value
-    val isLoading = employeeViewModel.isLoading.value
+    val selectedEmployees = remember { mutableStateOf(setOf<AddStaffDataClass>()) }
+    val employees = allEmployeeViewModel.employeeList.value
+    val isLoading = allEmployeeViewModel.isEmployeeLoading.value
+
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val identityLoading by profileViewModel.loading
+
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (isLoading) {
+        if (isLoading || identityLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(
+                    color = blueAcha,
+                    strokeWidth = 4.dp
+                )
             }
         } else {
             EmployeeSelection(
@@ -291,7 +299,7 @@ fun AddWorkHoursScreen(
                         scope.launch {
                             workViewModel.onChangeIsLoading(true)
                             workViewModel.addWorkHoursForEmployees(
-                                selectedEmployees.value,
+                                selectedEmployees = selectedEmployees.value,
                                 onSuccess = {
                                     Toast.makeText(
                                         context,
@@ -320,7 +328,8 @@ fun AddWorkHoursScreen(
                                         message = "Working Hour Added Failed Please Try Again"
                                     )
                                     notification.fireNotification()
-                                }
+                                },
+                                adminPhoneNumber = employeeIdentity.adminNumber.toString()
                             )
                         }
                     }

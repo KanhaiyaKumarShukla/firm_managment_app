@@ -26,8 +26,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.text.replace
 
-class EmployeeRepository(
-) {
+class EmployeeRepository() {
 
     val dateFormat = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
     val date: String = dateFormat.format(Date())
@@ -44,6 +43,7 @@ class EmployeeRepository(
 
     suspend fun raiseALeave(
         adminPhoneNumber: String,
+        firmName: String,
         employeeleaveData: EmployeeLeaveData,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
@@ -55,22 +55,32 @@ class EmployeeRepository(
             "+91$adminPhoneNumber"
         }
 
+        val firmRef =database.collection("Firms")
+            .document(firmName)
+            .collection("pendingLeaves")
+        val docRef = firmRef.add(employeeleaveData).await() // Adds a document and gets reference
+        val docId = docRef.id
+
+        // Update the document with the new ID field
+        docRef.update("id", docId).await()
+
+        val leaveDate = employeeleaveData.startingDate ?: todayDate.replace('/', '-')
+        val dateParts= leaveDate.split("-")
+        val targetMonth = SimpleDateFormat("MMM", Locale.getDefault())
+            .format(SimpleDateFormat("M", Locale.getDefault()).parse(dateParts[1])!!) // Converts "2" → "Feb"
+        val targetYear = dateParts[2]
+
         try {
-            val data = database.collection("Members")
-                .document(updateAdminNumber)
-                .collection("RaiseLeave")
-                .add(employeeleaveData)
-                .await()
             val yearDocRef = database.collection("Members")
                 .document(updateAdminNumber)
                 .collection("Employee")
                 .document(employeeNumber)
                 .collection("Leave")
-                .document("$currentYear")
+                .document(targetYear)
 
             Log.d("leave","Year Doc Ref: ${yearDocRef.path}")
 
-            val monthDocRef = yearDocRef.collection(currentMonth)
+            val monthDocRef = yearDocRef.collection(targetMonth)
                 .document(employeeleaveData.startingDate?.replace('/', '-').toString())
 
             yearDocRef.set(mapOf("created" to true)) // Placeholder field for the year document
@@ -83,7 +93,7 @@ class EmployeeRepository(
 
                             // Now add the subcollection data
                             val collectionRef = monthDocRef.collection("Entries")
-                            collectionRef.document(Timestamp.now().seconds.toString()).set(employeeleaveData)
+                            collectionRef.document(docId).set(employeeleaveData.copy(id=docId))
                                 .addOnSuccessListener {
                                     onSuccess()
                                     Log.d("leave", "Document with timestamp $employeeleaveData added successfully!")
@@ -152,16 +162,18 @@ class EmployeeRepository(
 
                     for (entryDoc in entriesSnapshot.documents) {
                         val data = entryDoc.data
+                        Log.d("leave", "data: $data, ${data?.get("status")}")
                         if (data != null) {
                             val leave = EmployeeLeaveData(
                                 emlPhoneNumber = data["emlPhoneNumber"] as? String ?: "",
                                 startingDate = data["startingDate"] as? String ?: "",
                                 endDate = data["endDate"] as? String ?: "",
                                 reason = data["reason"] as? String ?: "",
-                                status = data["status"] as? Int ?: 0,
+                                status = (data["status"] as? Number)?.toInt() ?: 0,
                                 type = data["type"] as? String ?: "",
                                 currentDate = data["currentDate"] as? String ?: ""
                             )
+                            Log.d("leave", "leave: $leave")
                             leaveData.add(leave)
                         }
                     }
@@ -230,6 +242,7 @@ class EmployeeRepository(
 
     suspend fun raiseAdvanceMoney(
         adminPhoneNumber: String,
+        firmName: String,
         advanceMoneyData: AdvanceMoneyData,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
@@ -241,37 +254,46 @@ class EmployeeRepository(
             "+91$adminPhoneNumber"
         }
 
-        try {
+        Log.d("advance", "advanceMoneyData: $advanceMoneyData, $firmName")
+        val firmRef =database.collection("Firms")
+            .document(firmName)
+            .collection("pendingAdvances")
+        val docRef = firmRef.add(advanceMoneyData).await() // Adds a document and gets reference
+        val docId = docRef.id
 
-            val data = database.collection("Members")
-                .document(updateAdminNumber)
-                .collection("AdvanceMoney")
-                .add(advanceMoneyData)
-                .await()
+        // Update the document with the new ID field
+        docRef.update("id", docId).await()
+
+        val advDate = advanceMoneyData.date ?: todayDate.replace('/', '-')
+        val dateParts= advDate.split("-")
+        val targetMonth = SimpleDateFormat("MMM", Locale.getDefault())
+            .format(SimpleDateFormat("M", Locale.getDefault()).parse(dateParts[1])!!) // Converts "2" → "Feb"
+        val targetYear = dateParts[2]
+        try {
 
             val yearDocRef = database.collection("Members")
                 .document(updateAdminNumber)
                 .collection("Employee")
                 .document(employeeNumber)
                 .collection("Advance")
-                .document("$currentYear")
+                .document(targetYear)
 
             Log.d("advance","Year Doc Ref: ${yearDocRef.path}")
 
-            val monthDocRef = yearDocRef.collection(currentMonth)
+            val monthDocRef = yearDocRef.collection(targetMonth)
                 .document(advanceMoneyData.date?.replace('/', '-').toString())
 
             yearDocRef.set(mapOf("created" to true)) // Placeholder field for the year document
                 .addOnSuccessListener {
-                    Log.d("advance", "Year document $currentYear created successfully.")
+                    Log.d("advance", "Year document $targetYear created successfully.")
 
                     monthDocRef.set(mapOf("created" to true)) // Placeholder field for the month document
                         .addOnSuccessListener {
-                            Log.d("advance", "Month document $currentMonth created successfully.")
+                            Log.d("advance", "Month document $targetMonth created successfully.")
 
                             // Now add the subcollection data
                             val collectionRef = monthDocRef.collection("Entries")
-                            collectionRef.document(Timestamp.now().seconds.toString()).set(advanceMoneyData)
+                            collectionRef.document(docId).set(advanceMoneyData.copy(id=docId))
                                 .addOnSuccessListener {
                                     onSuccess()
                                     Log.d("advance", "Document with timestamp $advanceMoneyData added successfully!")
@@ -348,7 +370,7 @@ class EmployeeRepository(
                                 amount = data["amount"] as? String ?: "",
                                 date = data["date"] as? String ?: "",
                                 emplPhoneNumber = data["emplPhoneNumber"] as? String ?: "",
-                                status = data["status"] as? Int ?: 0,
+                                status = (data["status"] as? Number)?.toInt() ?: 0,
                                 time = data["time"] as? String ?: ""
                             )
                             leaveData.add(advance)
@@ -388,7 +410,7 @@ class EmployeeRepository(
                                     amount = data["amount"] as? String ?: "",
                                     date = data["date"] as? String ?: "",
                                     emplPhoneNumber = data["emplPhoneNumber"] as? String ?: "",
-                                    status = data["status"] as? Int ?: 0,
+                                    status = (data["status"] as? Number)?.toInt() ?: 0,
                                     time = data["time"] as? String ?: ""
                                 )
                                 leaveData.add(advance)
@@ -676,6 +698,7 @@ class EmployeeRepository(
     suspend fun raiseExpense(
         adminPhoneNumber: String,
         expense: Expense,
+        firmName:String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
@@ -687,29 +710,41 @@ class EmployeeRepository(
                 "+91$adminPhoneNumber"
             }
 
+            if (expense.selectedDate.contains("/")) {
+                Log.d("expense", "Expense date contains '/': ${expense.selectedDate}")
+                Log.d("expense", "replace: ${expense.selectedDate.replace("/", "-")}")
+                expense.selectedDate = expense.selectedDate.replace("/", "-")
+                Log.d("expense", "Expense date after replace: ${expense.selectedDate}")
+            }
+            if (expense.selectedDate.split("-").size != 3) {
+                expense.selectedDate=todayDate.toString()
+            }
 
-            database.collection("Members")
-                .document(updateAdminNumber)
-                .collection("Expense")
-                .add(expense)
-                .addOnSuccessListener { documentReference ->
-                    // Log success with the document ID
-                    Log.d("Expense", "Expense added successfully with ID: ${documentReference.id}")
-                }
-                .addOnFailureListener { exception ->
-                    // Log the error message
-                    Log.e("Expense", "Failed to add expense: ${exception.message}", exception)
-                }
+            val firmRef =database.collection("Firms")
+                .document(firmName)
+                .collection("pendingExpenses")
+            val docRef = firmRef.add(expense).await() // Adds a document and gets reference
+            val docId = docRef.id
 
+            // Update the document with the new ID field
+            docRef.update("id", docId).await()
+
+
+            Log.d("expense", "Expense added successfully with ID: $docId, $expense")
+            val expenseDate = expense.selectedDate
+            val dateParts=expenseDate.split("-")
+            val targetMonth = SimpleDateFormat("MMM", Locale.getDefault())
+                .format(SimpleDateFormat("M", Locale.getDefault()).parse(dateParts[1])!!) // Converts "2" → "Feb"
+            val targetYear = dateParts[2]
             val yearDocRef = database.collection("Members")
                 .document(updateAdminNumber)
                 .collection("Employee")
                 .document(employeeNumber)
                 .collection("Expense")
-                .document("$currentYear")
+                .document(targetYear)
 
 
-            val monthDocRef = yearDocRef.collection(currentMonth).document(todayDate) // Assuming `todayDate` is unique per day
+            val monthDocRef = yearDocRef.collection(targetMonth).document(expenseDate) // Assuming `todayDate` is unique per day
 
 // Ensure year and month documents exist
             yearDocRef.set(mapOf("created" to true)) // Placeholder field for the year document
@@ -722,7 +757,7 @@ class EmployeeRepository(
 
                             // Now add the subcollection data
                             val collectionRef = monthDocRef.collection("Entries")
-                            collectionRef.document(Timestamp.now().seconds.toString()).set(expense)
+                            collectionRef.document(docId).set(expense.copy(id=docId))
                                 .addOnSuccessListener {
                                     onSuccess()
                                     Log.d("expense", "Document with timestamp $expense added successfully!")
@@ -858,7 +893,8 @@ class EmployeeRepository(
                                     } ?: emptyList(),
                                     moneyRaise = data["moneyRaise"] as? String ?: "",
                                     remaining = data["remaining"] as? String ?: "",
-                                    selectedDate = data["selectedDate"] as? String ?: ""
+                                    selectedDate = data["selectedDate"] as? String ?: "",
+                                    status = data["status"] as? Boolean == true
                                 )
                                 attendanceList.add(expense)
                             }
@@ -902,7 +938,8 @@ class EmployeeRepository(
                                         } ?: emptyList(),
                                         moneyRaise = data["moneyRaise"] as? String ?: "",
                                         remaining = data["remaining"] as? String ?: "",
-                                        selectedDate = data["selectedDate"] as? String ?: ""
+                                        selectedDate = data["selectedDate"] as? String ?: "",
+                                        status = data["status"] as? Boolean == true
                                     )
                                     attendanceList.add(expense)
                                 }
@@ -1020,17 +1057,27 @@ class EmployeeRepository(
     }
     private fun parsePunchInPunchOut(document: DocumentSnapshot): PunchInPunchOut {
         return PunchInPunchOut(
-            currentTime = document.getString("currentTime"),
+            currentTime = document.getString("currentTime")?:"",
             absent = document.getString("absent") ?: "Present",
-            date = document.getString("date"),
-            punchTime = document.getString("punchTime"),
-            punchOutTime = document.getString("punchOutTime"),
-            locationPunchTime = document.get("locationPunchTime")?.let {
-                // Parse GeofenceItems manually if needed
-                Gson().fromJson(it.toString(), GeofenceItems::class.java)
-            },
-            name = document.getString("name"),
-            phoneNumberString = document.getString("phoneNumberString"),
+            date = document.getString("date")?:"",
+            punchTime = document.getString("punchTime")?:"",
+            punchOutTime = document.getString("punchOutTime")?:"",
+            locationPunchTime = document.get("locationPunchTime")?.let { locationData ->
+                if (locationData is Map<*, *>) {
+                    GeofenceItems(
+                        title = locationData["title"] as? String ?: "",
+                        latitude = locationData["latitude"] as? String?: "",
+                        longitude = locationData["longitude"] as? String?: "",
+                        radius = locationData["radius"] as? String?: "",
+                        adminNo = locationData["adminNo"] as? String?: "",
+                        firmName = locationData["firmName"] as? String?: ""
+                    )
+                } else {
+                    GeofenceItems()
+                }
+            } ?: GeofenceItems(),
+            name = document.getString("name")?:"",
+            phoneNumberString = document.getString("phoneNumberString")?:"",
             totalMinutes = document.getLong("totalMinutes")?.toInt() ?: 0
         )
     }

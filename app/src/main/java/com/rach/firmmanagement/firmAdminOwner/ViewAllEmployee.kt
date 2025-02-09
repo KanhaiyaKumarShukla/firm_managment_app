@@ -1,5 +1,8 @@
 package com.rach.firmmanagement.firmAdminOwner
 
+import android.annotation.SuppressLint
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -16,8 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Card
 import androidx.compose.material.Checkbox
@@ -25,11 +28,11 @@ import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.FloatingActionButton
 import androidx.compose.material.FloatingActionButtonDefaults
 import androidx.compose.material.Icon
-import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
-import androidx.compose.material.TextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
@@ -40,7 +43,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,97 +50,249 @@ import com.rach.firmmanagement.R
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
 import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.ui.theme.fontBablooBold
-import com.rach.firmmanagement.ui.theme.red
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.gson.Gson
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
+import com.rach.firmmanagement.viewModel.AdminViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
+import java.net.URLEncoder
 
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun ViewAllEmployee(
-    viewModel: AllEmployeeViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
-    navController: NavController
+    viewModel: AllEmployeeViewModel,
+    navController: NavController,
+    adminViewModel: AdminViewModel = viewModel(),
+    profileViewModel: ProfileViewModel
 ) {
     val employees = viewModel.employeeList.value
-    val isLoading = viewModel.isLoading.value
-    val isAssigningTask = viewModel.isAssigningTask.value
+    val isEmployeeLoading = viewModel.isEmployeeLoading.value
 
-    val selectedEmployees = remember { mutableStateOf(setOf<ViewAllEmployeeDataClass>()) }
+    val selectedPermissions by adminViewModel.selectedPermissions.collectAsState()
+
+    val admins=viewModel.adminList.value
+    val isAdminLoading = viewModel.isAdminLoading.value
+
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val identityLoading by profileViewModel.loading
+
+    //val isAssigningTask = viewModel.isAssigningTask.value
+
+    val selectedEmployees = remember { mutableStateOf(setOf<AddStaffDataClass>()) }
     val isSelectionMode = remember { mutableStateOf(false) }
+    val showDialog = remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn {
-                items(employees) { employee ->
-                    val isSelected = selectedEmployees.value.contains(employee)
-                    val selectedEmployeeJson = Gson().toJson(employee)
-                    EmployeeCard(
-                        employee = employee,
-                        isSelected = isSelected,
-                        isSelectionMode = isSelectionMode.value,
-                        onCheckedChange = { isChecked ->
-                            selectedEmployees.value = if (isChecked) {
-                                selectedEmployees.value + employee
-                            } else {
-                                selectedEmployees.value - employee
-                            }
-                        },
-                        onLongPress = {
-                            isSelectionMode.value = true
-                        },
-                        navController = navController,
-                        onClickDelete = {
-                            viewModel.deleteEmployee(employee.phoneNumber ?: "")
-                        },
-                        onAttendanceClick = {
-                            navController.navigate("${ScreenAdmin.EmployeeAttendance.route}/$selectedEmployeeJson")
-                        },
-                        onTaskAssignedClick = {
-                            // Handle Task Assigned action
-                            navController.navigate("${ScreenAdmin.ViewOneEmployeeTask.route}/$selectedEmployeeJson")
-                        },
-                        onProfileClick = {
-                            // Handle Profile action
-                            navController.navigate("${ScreenAdmin.EmployeeProfile.route}/$selectedEmployeeJson")
-                        },
-                        onHolidayAssignedClick = {
-                            val selectedEmployeeJson = Gson().toJson(listOf(employee))
-                            navController.navigate("${ScreenAdmin.HolidayTabMenu.route}/$selectedEmployeeJson")
-                        },
-                        onExpenseClick={
-                            //val selectedEmployeeJson = Gson().toJson(listOf(employee))
-                            navController.navigate("${ScreenAdmin.EmployeeExpense.route}/$selectedEmployeeJson")
-                        },
-                        onChatClick={
-                            val selectedEmployeeJson = Gson().toJson(listOf(employee))
-                            navController.navigate("${ScreenAdmin.AdminMessage.route}/$selectedEmployeeJson")
-                        },
-                        onSalaryClick={
-                            navController.navigate("${ScreenAdmin.EmployeeSalary.route}/$selectedEmployeeJson")
-                        }
+    val scrollState = rememberScrollState()
+    val scaffoldState = rememberScaffoldState()
+    val context= LocalContext.current
+    val permissionsList = listOf("Attendance", "Working Hours", "Holiday", "Task", "Expenses", "Geofence")
+
+    Scaffold(
+        scaffoldState = scaffoldState,
+        floatingActionButton = {
+            if(isSelectionMode.value==true) {
+                FloatingActionButton(
+                    onClick = {
+                        showDialog.value=true
+                    },
+                    backgroundColor = blueAcha,
+                    elevation = FloatingActionButtonDefaults.elevation(10.dp)
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Add, contentDescription = "Make Admin",
+                        tint = Color.White
                     )
+
                 }
             }
+        }
+    ) {
 
-            if (isAssigningTask) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+                .padding(16.dp)
+                .padding(it)
+        ) {
+            if (isEmployeeLoading || isAdminLoading || identityLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(
+                        color = blueAcha,
+                        strokeWidth = 4.dp
+                    )
                 }
+            } else {
+
+                LazyColumn {
+                    items(employees) { employee ->
+                        val isSelected = selectedEmployees.value.contains(employee)
+                        val selectedEmployeeJson = Uri.encode(Gson().toJson(employee))
+                        EmployeeCard(
+                            employee = employee,
+                            isSelected = isSelected,
+                            isSelectionMode = isSelectionMode.value,
+                            onCheckedChange = { isChecked ->
+                                selectedEmployees.value = if (isChecked) {
+                                    selectedEmployees.value + employee
+                                } else {
+                                    selectedEmployees.value - employee
+                                }
+                            },
+                            onLongPress = {
+                                isSelectionMode.value = true
+                            },
+                            navController = navController,
+                            onClickDelete = {
+                                viewModel.deleteEmployee(
+                                    employee.phoneNumber.toString(),
+                                    firmName = employeeIdentity.firmName.toString(),
+                                    onSuccess = {
+                                        Toast.makeText(context, "Success", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onFailure = {
+                                        Toast.makeText(context, "Failure", Toast.LENGTH_SHORT).show()
+
+                                    }
+                                )
+                            },
+                            onAttendanceClick = {
+                                navController.navigate("${ScreenAdmin.EmployeeAttendance.route}/$selectedEmployeeJson")
+                            },
+                            onTaskAssignedClick = {
+                                // Handle Task Assigned action
+                                navController.navigate("${ScreenAdmin.ViewOneEmployeeTask.route}/$selectedEmployeeJson")
+                            },
+                            onProfileClick = {
+                                // Handle Profile action
+                                navController.navigate("${ScreenAdmin.EmployeeProfile.route}/$selectedEmployeeJson")
+                            },
+                            onHolidayAssignedClick = {
+                                //val selectedEmployeeJson = Gson().toJson(listOf(employee))
+                                //navController.navigate("${ScreenAdmin.HolidayTabMenu.route}/$selectedEmployeeJson")
+                                val selectedEmployeeJson = URLEncoder.encode(Gson().toJson(listOf(employee)), "UTF-8")
+                                navController.navigate("${ScreenAdmin.HolidayTabMenu.route}/$selectedEmployeeJson")
+
+                            },
+                            onExpenseClick = {
+                                //val selectedEmployeeJson = Gson().toJson(listOf(employee))
+                                navController.navigate("${ScreenAdmin.EmployeeExpense.route}/$selectedEmployeeJson")
+                            },
+                            onChatClick = {
+                                val selectedEmployeeJson = URLEncoder.encode(Gson().toJson(listOf(employee)), "UTF-8")
+                                navController.navigate("${ScreenAdmin.AdminMessage.route}/$selectedEmployeeJson")
+                            },
+                            onSalaryClick = {
+                                navController.navigate("${ScreenAdmin.EmployeeSalary.route}/$selectedEmployeeJson")
+                            }
+                        )
+                    }
+                }
+
+
+
+                /*
+                if (isAssigningTask) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                 */
             }
+            //AssignTaskToEmployees(viewModel)
         }
-        //AssignTaskToEmployees(viewModel)
+    }
+
+    if (showDialog.value) {
+        AlertDialog(
+            onDismissRequest = { isSelectionMode.value = false },
+            title = { Text("Confirm Admin Role") },
+            text = {
+                Column {
+                    Text("Are you sure you want to make the following employees Admin?")
+                    selectedEmployees.value.forEach { employee ->
+                        Text(text = employee.name.toString())
+                    }
+                    Text("Select Permissions")
+
+                    Column {
+                        permissionsList.forEach { permission ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { adminViewModel.togglePermission(permission) }
+                                    .padding(8.dp)
+                            ) {
+                                androidx.compose.material3.Checkbox(
+                                    checked = selectedPermissions.contains(permission),
+                                    onCheckedChange = { adminViewModel.togglePermission(permission) }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                androidx.compose.material3.Text(text = permission)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                CustomButton(
+                    onClick = {
+
+                        selectedEmployees.value.forEach { employee->
+                            adminViewModel.savePermissions(
+                                firmName = employee.firmName.toString(),  // Replace with actual firm nam
+                                phoneNumber = employee.phoneNumber.toString(),
+                                onSuccess = {
+                                    Toast.makeText(context, "Permissions Saved", Toast.LENGTH_SHORT)
+                                        .show()
+                                },
+                                onFailure = {
+                                    Toast.makeText(context, "Failed to Save", Toast.LENGTH_SHORT)
+                                        .show()
+                                }
+                            )
+                        }
+
+                        viewModel.updateEmployeesToAdmin(
+                            selectedEmployees.value.toList(),
+                            onSuccess={
+                                Toast.makeText(context, "Success", Toast.LENGTH_SHORT).show()
+                            },
+                            onFailure={
+                                Toast.makeText(context, "Failure", Toast.LENGTH_SHORT).show()
+                            },
+                            firmName = employeeIdentity.firmName.toString()
+                        )
+                        isSelectionMode.value = false
+                        showDialog.value=false
+                        selectedEmployees.value = emptySet()
+                    },
+                    text="Confirm"
+                )
+            },
+            dismissButton = {
+                CustomButton(
+                    onClick = {
+                        isSelectionMode.value = false
+                        showDialog.value=false
+                        selectedEmployees.value = emptySet()
+                    },
+                    text="Cancel"
+                )
+
+            }
+        )
     }
 }
 
@@ -146,7 +300,7 @@ fun ViewAllEmployee(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EmployeeCard(
-    employee: ViewAllEmployeeDataClass,
+    employee: AddStaffDataClass,
     isSelected: Boolean,
     isSelectionMode: Boolean,
     onCheckedChange: (Boolean) -> Unit,
@@ -293,6 +447,7 @@ fun EmployeeCard(
     }
 }
 
+/*
 @Composable
 fun AssignTaskToEmployees(viewModel: AllEmployeeViewModel) {
     val context = LocalContext.current
@@ -334,7 +489,7 @@ fun AssignTaskToEmployees(viewModel: AllEmployeeViewModel) {
 
     }
 }
-
+*/
 
 
 @Preview(showBackground = true)
@@ -342,7 +497,7 @@ fun AssignTaskToEmployees(viewModel: AllEmployeeViewModel) {
 fun ViewAllEmployeesPreview() {
     FirmManagementTheme {
         EmployeeCard(
-            employee= ViewAllEmployeeDataClass(),
+            employee = AddStaffDataClass(),
             onClickDelete = {},
             onAttendanceClick = {},
             onTaskAssignedClick = {},

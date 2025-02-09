@@ -1,7 +1,10 @@
 package com.rach.firmmanagement.login
 
+import android.app.Activity
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,15 +20,18 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -124,8 +130,21 @@ fun PhoneNumberLogin(
         }
     }
 
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        Log.d("GoogleSignIn", "Sign-in result: $result")
+        if (result.resultCode == Activity.RESULT_OK) {
+            Log.d("GoogleSignIn", "Sign-in successful")
+            result.data?.let { viewModel.handleSignInResult(it) }
+        }else{
+            Log.d("GoogleSignIn", "Sign-in failed")
+        }
+    }
 
-
+    LaunchedEffect(Unit) {
+        viewModel.initializeClient(context)
+    }
 
     Box(modifier = Modifier.fillMaxSize()
         .background(Color.White)){
@@ -138,9 +157,6 @@ fun PhoneNumberLogin(
                 ),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-
-
 
             Image(
                 painter = painterResource(id = R.drawable.logo), contentDescription = "Logo",
@@ -228,7 +244,20 @@ fun PhoneNumberLogin(
             }
 
             Spacer(modifier = Modifier.height(15.dp))
+            Button(
+                onClick = { viewModel.signIn(launcher) },
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_google),
+                    contentDescription = "Google Sign-In",
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Sign in with Google")
+            }
 
+            Spacer(modifier = Modifier.height(15.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -294,15 +323,18 @@ fun PhoneNumberLogin(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(progressBarBgColor.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
+                    .wrapContentSize(Alignment.Center)
             ) {
-                CircularProgressIndicator()
+                androidx.compose.material.CircularProgressIndicator(
+                    color = blueAcha,
+                    strokeWidth = 4.dp
+                )
             }
         }
     }
 
 }
+
 
 private fun isValidPhoneNumber(phoneNumber: String, countryCode: String = "+91"): Boolean {
     val phoneUtil = PhoneNumberUtil.getInstance()

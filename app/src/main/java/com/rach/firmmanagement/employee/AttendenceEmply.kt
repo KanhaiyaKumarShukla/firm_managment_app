@@ -50,6 +50,7 @@ import androidx.compose.runtime.*
 import com.rach.firmmanagement.firmAdminOwner.EmployeeAttendance
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.EmployeeViewModel1
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -526,7 +527,8 @@ fun EmployAttendance(
 @Composable
 fun EmployAttendance(
     loginViewModel: LoginViewModel,
-    employeeViewModel: EmployeeViewModel1=viewModel()
+    employeeViewModel: EmployeeViewModel1=viewModel(),
+    profileViewModel : ProfileViewModel
 ) {
     val selectedMonth by employeeViewModel.selectedMonthAttendance.collectAsState()
     val selectedToDate by employeeViewModel.toDateAttendance.collectAsState()
@@ -534,9 +536,12 @@ fun EmployAttendance(
     val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
     val attendanceDetails by employeeViewModel.attendance.collectAsState()
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
+
     LaunchedEffect(key1 = Unit) {
         employeeViewModel.fetchAttendance(
-            adminPhoneNumber = adminPhoneNumber,
+            adminPhoneNumber = employeeIdentity.adminNumber.toString(),
             selectedMonth = selectedMonth,
             from = "",
             to = ""
@@ -551,9 +556,10 @@ fun EmployAttendance(
             toDate = selectedToDate, // Update with the actual to date
             selectedMonth = selectedMonth, // Update as necessary
             attendanceLoading = employeeViewModel.isLoading, // Pass actual loading state
+            employeeIdentityLoading = loading,
             onFetchAttendance = { selectedEmployee, month, from, to ->
                 employeeViewModel.fetchAttendance(
-                    adminPhoneNumber = adminPhoneNumber,
+                    adminPhoneNumber = employeeIdentity.adminNumber.toString(),
                     selectedMonth = month,
                     from = from,
                     to = to
@@ -741,7 +747,8 @@ fun ImplyAttendPreview() {
         //EmployAttendance(loginViewModel = LoginViewModel())
         EmployAttendance(
             loginViewModel = LoginViewModel(),
-            employeeViewModel = EmployeeViewModel1()
+            employeeViewModel = EmployeeViewModel1(),
+            profileViewModel = ProfileViewModel()
         )
     }
 }

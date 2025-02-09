@@ -54,7 +54,7 @@ import kotlin.math.abs
 @Composable
 fun EmployeeSalaryScreen(
     holidayViewModel: HolidayViewModel,
-    employee:ViewAllEmployeeDataClass,
+    employee: AddStaffDataClass,
 ){
     val showMonthPickerDialog = remember { mutableStateOf(false) }
 
@@ -71,6 +71,7 @@ fun EmployeeSalaryScreen(
     val actualWorkHours by holidayViewModel.workHourData.collectAsState()
     val workHourLoading by holidayViewModel.workHourLoading.collectAsState()
     val leaveLoading by holidayViewModel.leaveLoading.collectAsState()
+    val adminPhoneNumber = employee.adminNumber.toString()
 
     val (month, year) = remember(selectedMonth) {
         val parts = selectedMonth.split(" ")
@@ -84,26 +85,31 @@ fun EmployeeSalaryScreen(
         holidayViewModel.getFestivalsForMonthAndYear(
             employeeNumber = employeePhoneNumber,
             year = year,
-            month = month
+            month = month,
+            adminNumber = adminPhoneNumber
         )
         holidayViewModel.getRegularHolidaysForYear(
             employeeNumber = employeePhoneNumber,
-            year = year
+            year = year,
+            adminNumber = adminPhoneNumber
         )
         holidayViewModel.fetchMonthlyWorkHours(
             employeePhoneNumber = employeePhoneNumber,
             year = year,
-            month = month
+            month = month,
+            adminNumber = adminPhoneNumber
         )
         holidayViewModel.fetchLeavesForMonthAndYear(
             employeePhoneNumber = employeePhoneNumber,
             year = year,
-            month = month
+            month = month,
+            adminNumber = adminPhoneNumber
         )
         holidayViewModel.fetchWorkHourData(
             employeePhoneNumber = employeePhoneNumber,
             month = month,
-            year = year
+            year = year,
+            adminNumber = adminPhoneNumber
         )
     }
 
@@ -158,26 +164,31 @@ fun EmployeeSalaryScreen(
                         holidayViewModel.getFestivalsForMonthAndYear(
                             employeeNumber = employeePhoneNumber,
                             year = year,
-                            month = month
+                            month = month,
+                            adminNumber = adminPhoneNumber
                         )
                         holidayViewModel.getRegularHolidaysForYear(
                             employeeNumber = employeePhoneNumber,
-                            year = year
+                            year = year,
+                            adminNumber = adminPhoneNumber
                         )
                         holidayViewModel.fetchMonthlyWorkHours(
                             employeePhoneNumber = employeePhoneNumber,
                             year = year,
-                            month = month
+                            month = month,
+                            adminNumber = adminPhoneNumber
                         )
                         holidayViewModel.fetchLeavesForMonthAndYear(
                             employeePhoneNumber = employeePhoneNumber,
                             year = year,
-                            month = month
+                            month = month,
+                            adminNumber = adminPhoneNumber
                         )
                         holidayViewModel.fetchWorkHourData(
                             employeePhoneNumber = employeePhoneNumber,
                             month = month,
-                            year = year
+                            year = year,
+                            adminNumber = adminPhoneNumber
                         )
                     },
                     text = "Search"
@@ -187,6 +198,7 @@ fun EmployeeSalaryScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Log.d("employeeSalary", "data: $employeeData, regularHolidays: $ragularHolidays, festival: $festival, leaveData: $leaveData, workHours: $workingHourData, actualWorkHour: $actualWorkHours")
+
 
 
             DetailedSalaryScreen(
@@ -236,6 +248,7 @@ fun DetailedSalaryScreen(
     )
 
     val salaryCalculationResult = employeeData?.let {
+
         CalculateSalary(
             employeeData = it,
             regularHolidays = regularHolidays,
@@ -246,6 +259,9 @@ fun DetailedSalaryScreen(
             month = month,
             year = year
         )
+
+
+            //SalaryCalculationResult()
     } ?: run {
         // Provide a default result or throw an error
         SalaryCalculationResult()
@@ -352,7 +368,7 @@ fun CalculateSalary(
     month: String,
     year: String
 ): SalaryCalculationResult {
-    val inputDateFormat = SimpleDateFormat("d/M/yyyy", Locale.ENGLISH)
+    val inputDateFormat = SimpleDateFormat("d-M-yyyy", Locale.ENGLISH)
     val calendar = Calendar.getInstance()
     val currentDate = Calendar.getInstance()
 
@@ -377,6 +393,7 @@ fun CalculateSalary(
     } else {
         employeeData?.salary!!.toDouble() // If not "Per Month", handle appropriately
     }
+
 
     // Traverse each day of the month
     for (day in 1..totalDays) {
@@ -425,7 +442,8 @@ fun CalculateSalary(
             workingDays++
         }
     }
-    Log.d("employeeSalary", "holidays: $holidays, leaveDays: $leaveDays, workingDays: $workingDays")
+
+    Log.d("employeeSalary", "holidays: $holidays, leaveDays: $leaveDays, workingDays: $workingDays, salaryPerDay: $salaryPerDay")
     val salary= (workingDays + holidays + leaveDays) * salaryPerDay.toFloat()
     return SalaryCalculationResult(holidays, leaveDays, workingDays, salary, totalDays = totalDays)
 }

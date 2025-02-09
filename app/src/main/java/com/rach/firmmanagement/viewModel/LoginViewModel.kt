@@ -20,9 +20,30 @@ import kotlinx.coroutines.launch
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.Phonenumber
 import java.util.concurrent.TimeUnit
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
+import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import com.google.android.gms.auth.api.identity.BeginSignInRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.auth.api.identity.SignInClient
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.rach.firmmanagement.dataClassImp.EmployeeIdentity
 
 class LoginViewModel(
-    private val repository: CheckingRepository = Graph.checkingRepository
+    private val repository: CheckingRepository = Graph.checkingRepository,
 ) : ViewModel() {
 
     private val _phoneNumberInput = MutableStateFlow("")
@@ -72,6 +93,7 @@ class LoginViewModel(
         }
     }
 
+
     fun saveOrUpdateData() {
         viewModelScope.launch {
             val currentData = repository.getData()
@@ -95,6 +117,64 @@ class LoginViewModel(
             }
         }
     }
+
+    private val auth = FirebaseAuth.getInstance()
+    private lateinit var oneTapClient: SignInClient
+    private val signInRequest: BeginSignInRequest = BeginSignInRequest.builder()
+        .setGoogleIdTokenRequestOptions(
+            BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
+                .setSupported(true)
+                .setServerClientId("530510197461-5rj668tn0jfuejaclfreda0j3hnvjvvm.apps.googleusercontent.com")
+                .setFilterByAuthorizedAccounts(false)
+                .build()
+        ).build()
+
+    fun initializeClient(context: Context) {
+        oneTapClient = Identity.getSignInClient(context)
+    }
+
+    fun signIn(launcher: ManagedActivityResultLauncher<IntentSenderRequest, ActivityResult>) {
+        oneTapClient.beginSignIn(signInRequest)
+            .addOnSuccessListener { result ->
+                val intentSenderRequest = IntentSenderRequest.Builder(result.pendingIntent).build()
+                launcher.launch(intentSenderRequest)
+                Log.d("GoogleSignIn", "Sign-in started")
+            }
+            .addOnFailureListener { e ->
+                Log.e("GoogleSignIn", "Sign-in failed: ${e.localizedMessage}")
+            }
+    }
+
+
+    fun handleSignInResult(data: Intent) {
+        try {
+            Log.d("GoogleSignIn", "Sign data: ${data.data}")
+            val credential = oneTapClient.getSignInCredentialFromIntent(data)
+            val idToken = credential.googleIdToken
+            if (idToken != null) {
+                firebaseAuthWithGoogle(idToken)
+                Log.d("GoogleSignIn", "Sign-in successful $idToken")
+            } else {
+                Log.d("GoogleSignIn", "No ID token received.")
+            }
+        } catch (e: Exception) {
+            Log.e("GoogleSignIn", "Sign-in failed: ${e.localizedMessage}")
+        }
+    }
+
+    private fun firebaseAuthWithGoogle(idToken: String) {
+        Log.d("GoogleSignIn", "Firebase auth with google called ${idToken}")
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d("GoogleSignIn", "signInWithCredential:success")
+                } else {
+                    Log.w("GoogleSignIn", "signInWithCredential:failure", task.exception)
+                }
+            }
+    }
+
 
     /// Register Screen ViewModel
 
@@ -260,5 +340,6 @@ class LoginViewModel(
         }
 
     }
+
 
 }

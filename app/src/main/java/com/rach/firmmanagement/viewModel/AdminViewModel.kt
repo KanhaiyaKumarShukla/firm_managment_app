@@ -138,6 +138,39 @@ class AdminViewModel() : ViewModel() {
 
     val repository = AdminRepository()
 
+    private val _selectedAdminNumber = MutableStateFlow("")
+    val selectedAdminNumber: StateFlow<String> = _selectedAdminNumber
+    fun onChangeSelectedAdminNumber(newNumber: String) {
+        _selectedAdminNumber.value = newNumber
+    }
+    private val _selectedFirmName = MutableStateFlow("")
+    val selectedFirmName: StateFlow<String> = _selectedFirmName
+    fun onChangeSelectedFirmName(newFirmName: String) {
+        _selectedFirmName.value = newFirmName
+    }
+
+
+    private val _selectedPermissions = MutableStateFlow<List<String>>(emptyList())
+    val selectedPermissions: StateFlow<List<String>> = _selectedPermissions
+
+    fun togglePermission(permission: String) {
+        _selectedPermissions.value = if (_selectedPermissions.value.contains(permission)) {
+            _selectedPermissions.value - permission
+        } else {
+            _selectedPermissions.value + permission
+        }
+    }
+
+    fun savePermissions(firmName: String, phoneNumber:String, onSuccess: () -> Unit, onFailure: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                repository.saveAdminPermissions(firmName, phoneNumber, _selectedPermissions.value)
+                onSuccess()
+            } catch (e: Exception) {
+                onFailure()
+            }
+        }
+    }
 
     fun addEmployee(
         onSuccess: () -> Unit,
@@ -156,7 +189,9 @@ class AdminViewModel() : ViewModel() {
                     timeVariation = _timeVariation.value,
                     timeVariationUnit = _timeVariationUnit.value,
                     leaveDays = _leaveDays.value,
-                    workPlace = _selectedGeoFence.value
+                    workPlace = _selectedGeoFence.value,
+                    firmName = _selectedFirmName.value,
+                    adminNumber = if (_selectedAdminNumber.value.isEmpty()) _phoneNumber.value else _selectedAdminNumber.value
                 ),
                 employeePhoneNumber = _phoneNumber.value,
                 adminPhoneNumber = adminPhoneNumber,
@@ -259,13 +294,15 @@ class AdminViewModel() : ViewModel() {
     }
 
     fun assignTask(
-        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        selectedEmployees: Set<AddStaffDataClass>,
+        adminPhoneNumber:String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ){
         viewModelScope.launch{
             repository.assignTask(
                 selectedEmployees = selectedEmployees,
+                adminPhoneNumber=adminPhoneNumber,
                 addTaskDataClass = AddTaskDataClass(
                     assignDate = _assignTaskDate.value,
                     task = _task.value,
@@ -290,14 +327,14 @@ class AdminViewModel() : ViewModel() {
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> get() = _loading
 
-    fun loadTasks(allEmployees:List<ViewAllEmployeeDataClass>) {
+    fun loadTasks(allEmployees:List<AddStaffDataClass>) {
         viewModelScope.launch {
             _loading.value = true
             Log.d("Task", "load Tasks")
             try {
 
                 Log.d("Task", allEmployees.toString())
-                val taskList = repository.loadTasks(adminPhoneNumber, allEmployees)
+                val taskList = repository.loadTasks(allEmployees)
                 _tasks.value = taskList
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -310,7 +347,7 @@ class AdminViewModel() : ViewModel() {
     }
     private val _oneEmployeeTask = MutableStateFlow<List<AddTaskDataClass>>(emptyList())
     val oneEmployeeTask: StateFlow<List<AddTaskDataClass>> get() = _oneEmployeeTask
-    fun loadOneEmployeeTask(employee: ViewAllEmployeeDataClass){
+    fun loadOneEmployeeTask(employee: AddStaffDataClass, adminPhoneNumber: String){
         viewModelScope.launch {
             _loading.value = true
             try {
@@ -325,7 +362,7 @@ class AdminViewModel() : ViewModel() {
         }
     }
 
-    fun deleteTask( task: AddTaskDataClass) {
+    fun deleteTask( task: AddTaskDataClass, adminPhoneNumber:String) {
         viewModelScope.launch {
             try {
                 repository.deleteTask(adminPhoneNumber, task)
@@ -343,7 +380,8 @@ class AdminViewModel() : ViewModel() {
         employeePhone: String = "",
         newRemark: String,
         onSuccess: () -> Unit,
-        onFailure: () -> Unit
+        onFailure: () -> Unit,
+        adminPhoneNumber:String
     ) {
         viewModelScope.launch {
             repository.addRemark(
@@ -365,7 +403,8 @@ class AdminViewModel() : ViewModel() {
     fun addRealtimeRemarksListener(
         employeePhone: String,
         taskId: String,
-        onRemarksUpdated: (List<Remark>) -> Unit
+        onRemarksUpdated: (List<Remark>) -> Unit,
+        adminPhoneNumber:String
     ) {
         val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
             adminPhoneNumber
@@ -399,7 +438,7 @@ class AdminViewModel() : ViewModel() {
         taskId: String,
         isCommon: Boolean,
         employeePhone: String = "",
-
+        adminPhoneNumber:String
     ) : List<Remark> {
         return repository.fetchRemarks(
             adminPhoneNumber = adminPhoneNumber,
@@ -418,7 +457,8 @@ class AdminViewModel() : ViewModel() {
     fun getExpensesForMonth(
         employeeNumber:String,
         year: String,
-        month: String
+        month: String,
+        adminPhoneNumber:String
     ) {
         viewModelScope.launch {
             repository.getExpensesForMonth(
@@ -477,10 +517,11 @@ class AdminViewModel() : ViewModel() {
     }
 
     fun fetchAttendance(
-        selectedEmployees: List<ViewAllEmployeeDataClass>,
+        selectedEmployees: List<AddStaffDataClass>,
+        adminPhoneNumber: String,
         from: String,
         to: String,
-        selectedMonth: String
+        selectedMonth: String,
     ){
         viewModelScope.launch {
             _loading.value = true
@@ -563,13 +604,19 @@ class AdminViewModel() : ViewModel() {
     fun onChangeStaffWorkPlace(newWorkPlace: GeofenceItems) {
         _staffWorkPlace.value = newWorkPlace
     }
+    private val _staffAdminNo = MutableStateFlow("")
+    val staffAdminNo: StateFlow<String> = _staffAdminNo
+
+    private val _staffFirmName = MutableStateFlow("")
+    val staffFirmName: StateFlow<String> = _staffFirmName
+    private val _staffSalaryUnit = MutableStateFlow("")
+    private val _staffTimeVariationUnit = MutableStateFlow("")
 
     // Load staff data
     fun loadStaff(employeePhoneNumber: String) {
         viewModelScope.launch {
             isProfileLoading.value = true
             repository.getStaff(
-                adminPhoneNumber = adminPhoneNumber,
                 employeePhoneNumber = employeePhoneNumber,
                 onSuccess = { staff ->
                     _Staffname.value = staff.name ?: ""
@@ -581,6 +628,10 @@ class AdminViewModel() : ViewModel() {
                     _staffTimeVariation.value = staff.timeVariation ?: ""
                     _staffLeaveDays.value = staff.leaveDays ?: ""
                     _staffWorkPlace.value = staff.workPlace
+                    _staffAdminNo.value = staff.adminNumber ?: ""
+                    _staffFirmName.value = staff.firmName ?: ""
+                    _staffSalaryUnit.value=staff.salaryUnit ?: ""
+                    _staffTimeVariationUnit.value=staff.timeVariationUnit ?: ""
                     isProfileLoading.value = false
                 },
                 onFailure = {
@@ -603,10 +654,13 @@ class AdminViewModel() : ViewModel() {
                 registrationDate = _staffRegistrationDate.value,
                 timeVariation = _staffTimeVariation.value,
                 leaveDays = _staffLeaveDays.value,
-                workPlace = _staffWorkPlace.value
+                workPlace = _staffWorkPlace.value,
+                adminNumber = _staffAdminNo.value,
+                firmName = _staffFirmName.value,
+                salaryUnit = _staffSalaryUnit.value,
+                timeVariationUnit = _staffTimeVariationUnit.value
             )
             repository.updateStaff(
-                adminPhoneNumber = adminPhoneNumber,
                 employeePhoneNumber = employeePhoneNumber,
                 updatedStaff = updatedStaff,
                 onSuccess = {
@@ -629,7 +683,7 @@ class AdminViewModel() : ViewModel() {
     val loadingEmployeeExpense: StateFlow<Boolean> = _loadingEmployeeExpense
 
     fun getEmployeeExpense(
-        employee: List<ViewAllEmployeeDataClass>,
+        employee: List<AddStaffDataClass>,
         from: String,
         to: String,
         selectedMonth: String
@@ -638,7 +692,6 @@ class AdminViewModel() : ViewModel() {
             _loadingEmployeeExpense.value = true
             repository.getEmployeeExpense(
                 selectedEmployees = employee,
-                adminPhoneNumber = adminPhoneNumber,
                 from = from,
                 to = to,
                 selectedMonth = selectedMonth,
@@ -658,6 +711,10 @@ class AdminViewModel() : ViewModel() {
     // chat message
     private val _messages = MutableStateFlow<List<MessageDataClass>>(emptyList())
     val messages: StateFlow<List<MessageDataClass>> = _messages
+
+    private val _messageLoading = MutableStateFlow(false)
+    val messageLoading: StateFlow<Boolean> = _messageLoading
+
     private val _inputMessage = MutableStateFlow("")
     val inputMessage: StateFlow<String> = _inputMessage
     fun onChangeMessage(newReason: String) {
@@ -665,7 +722,7 @@ class AdminViewModel() : ViewModel() {
         Log.d("Chat", "change: $newReason, ${inputMessage.value}")
     }
     fun sendMessage(
-        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        selectedEmployees: Set<AddStaffDataClass>,
         message: MessageDataClass
     ) {
         Log.d("Chat", "Sending message to multiple employees: $selectedEmployees")
@@ -696,14 +753,17 @@ class AdminViewModel() : ViewModel() {
         employeeNumber:String
     ) {
         viewModelScope.launch {
+            _messageLoading.value = true
             messagesListener = repository.fetchMessages(
                 adminPhoneNumber,
                 employeeNumber,
                 onSuccess = { fetchedMessages ->
                     _messages.value = fetchedMessages
+                    _messageLoading.value = false
                 },
                 onFailure = {
                     _messages.value= emptyList()
+                    _messageLoading.value = false
                 }
             )
         }

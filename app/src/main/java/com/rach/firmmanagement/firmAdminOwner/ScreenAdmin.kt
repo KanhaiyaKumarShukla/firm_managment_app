@@ -24,5 +24,9 @@ sealed class ScreenAdmin(val route: String) {
     object AdminMessage:ScreenAdmin("Admin Message")
     object EmployeeChat:ScreenAdmin("Employee Chat")
     object EmployeeSalary:ScreenAdmin("Employee Salary")
+    object Regularization:ScreenAdmin("Regularization")
+    object RegularizationScreen : ScreenAdmin("regularization_screen/{categoryName}") {
+        fun createRoute(categoryName: String) = "regularization_screen/$categoryName"
+    }
 
 }

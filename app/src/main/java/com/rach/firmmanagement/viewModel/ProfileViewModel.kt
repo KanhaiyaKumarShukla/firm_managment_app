@@ -1,8 +1,11 @@
 package com.rach.firmmanagement.viewModel
 
+
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
+import com.rach.firmmanagement.dataClassImp.EmployeeIdentity
 import com.rach.firmmanagement.login.DataClassRegister
 import com.rach.firmmanagement.repository.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -105,6 +108,30 @@ class ProfileViewModel(
                 },
                 onFailure = {
                     isLoading.value = false
+                }
+            )
+        }
+    }
+
+    private val _employeeIdentity = MutableStateFlow(AddStaffDataClass())
+    val employeeIdentity : StateFlow< AddStaffDataClass >  = _employeeIdentity
+    val loading = mutableStateOf(false)
+
+    init {
+        getEmployeeIdentity()
+    }
+
+    fun getEmployeeIdentity(){
+        viewModelScope.launch {
+            loading.value = true
+            repository.getEmployeeIdentity(
+                onSuccess = { employee->
+                    _employeeIdentity.value = employee
+                    loading.value = false
+                },
+                onFailure = {
+                    _employeeIdentity.value=AddStaffDataClass()
+                    loading.value = false
                 }
             )
         }

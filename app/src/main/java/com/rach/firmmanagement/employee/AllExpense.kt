@@ -37,6 +37,7 @@ import com.rach.firmmanagement.firmAdminOwner.ExpenseDetailDialog
 import com.rach.firmmanagement.firmAdminOwner.showDateRangePicker
 import com.rach.firmmanagement.firmAdminOwner.showMonthPicker
 import com.rach.firmmanagement.ui.theme.blueAcha
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 /*
@@ -104,7 +105,8 @@ fun AllExpense(
 @Composable
 fun AllExpense(
     employeeViewModel: EmployeeViewModel1 = viewModel(),
-    loginViewModel: LoginViewModel
+    loginViewModel: LoginViewModel,
+    profileViewModel: ProfileViewModel
 ){
 
     var showDialog by remember { mutableStateOf(false) }
@@ -119,16 +121,18 @@ fun AllExpense(
     val toDate by employeeViewModel.toDate.collectAsState()
     val selectedMonth by employeeViewModel.selectedMonth1.collectAsState()
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
     LaunchedEffect(Unit) {
         employeeViewModel.fetchExpense(
-            adminPhoneNumber = adminPhoneNumber,
+            adminPhoneNumber = employeeIdentity.adminNumber.toString(),
             selectedMonth = selectedMonth,
             from = "",
             to = ""
         )
     }
 
-    if (expenseLoading) { // Use .value for State objects
+    if (expenseLoading || loading) { // Use .value for State objects
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -174,7 +178,7 @@ fun AllExpense(
                 CustomButton(
                     onClick = {
                         employeeViewModel.fetchExpense(
-                            adminPhoneNumber = adminPhoneNumber,
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString(),
                             selectedMonth = selectedMonth,
                             from = "",
                             to = ""
@@ -218,7 +222,7 @@ fun AllExpense(
                 CustomButton(
                     onClick = {
                         employeeViewModel.fetchExpense(
-                            adminPhoneNumber = adminPhoneNumber,
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString(),
                             selectedMonth = "",
                             from = fromDate,
                             to = toDate

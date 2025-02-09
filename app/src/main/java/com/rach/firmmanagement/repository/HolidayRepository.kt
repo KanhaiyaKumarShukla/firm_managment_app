@@ -29,36 +29,39 @@ class HolidayRepository {
         "+91$currentUserPhoneNumber"
     }
     suspend fun getFestivals(
+        firmName: String,
         year: String,
         onSuccess: (List<Festival>) -> Unit,
         onFailure: () -> Unit
-    ){
+    ) {
         try {
-            val documentSnapshot = database
-                .collection("Members")
-                .document(updateAdminNumber)
-                .collection("Holiday")
+            val documentSnapshot = database.collection("Firms")
+                .document(firmName)
+                .collection("Festivals")
                 .document(year)
                 .get()
                 .await()
 
-            val festivalsMap = documentSnapshot.data ?: emptyMap()
+            if (documentSnapshot.exists()) {
+                val festivals = documentSnapshot.data?.mapNotNull { entry ->
+                    entry.value as? Map<String, Any>
+                }?.map { map ->
+                    Festival(
+                        name = map["name"] as? String ?: "",
+                        date = map["date"] as? String ?: "",
+                        year = map["year"] as? String ?: "",
+                        month = map["month"] as? String ?: "",
+                        selected = map["selected"] as? Boolean ?: false
+                    )
+                } ?: emptyList()
 
-            // Convert the map to a list of Festival objects
-            val festivals = festivalsMap.values.mapNotNull {
-                it as? Map<*, *> // Safely cast to a map
-            }.map { map ->
-                Festival(
-                    name = map["name"] as? String ?: "",
-                    date = map["date"] as? String ?: "",
-                    year = map["year"] as? String ?: "",
-                    month = map["month"] as? String ?: "",
-                    selected = map["selected"] as? Boolean ?: false
-                )
+                Log.d("Holiday", "Fetched Festivals for Year $year: $festivals")
+                onSuccess(festivals)
+            } else {
+                onFailure()
             }
-            onSuccess(festivals)
-
         } catch (e: Exception) {
+            Log.e("Holiday", "Error fetching festivals: ${e.message}")
             onFailure()
         }
     }
@@ -66,16 +69,16 @@ class HolidayRepository {
     suspend fun addFestival(
         festival: Festival,
         onSuccess: () -> Unit,
-        onFailure: () -> Unit
+        onFailure: () -> Unit,
+        firmName:String
     ) {
         try {
-            database
-                .collection("Members")
-                .document(updateAdminNumber)
-                .collection("Holiday")
-                .document(festival.year)
-                .set(mapOf(festival.name to festival), SetOptions.merge())
-                .await()
+            database.collection("Firms")
+                .document(firmName)
+                .collection("Festivals")
+                .document(festival.year.toString())
+                .set(mapOf(festival.name to festival)).await()
+            Log.d("Holiday", "Festival added successfully $updateAdminNumber, $festival")
             onSuccess()
         } catch (e: Exception) {
             onFailure()
@@ -84,13 +87,14 @@ class HolidayRepository {
 
     suspend fun fetchAdditionalHolidays(
         onSuccess: (List<String>) -> Unit,
-        onFailure: () -> Unit
+        onFailure: () -> Unit,
+        firmName: String
     ) {
 
         try {
             val querySnapshot = database
-                .collection("Members")
-                .document(updateAdminNumber)
+                .collection("Firms")
+                .document(firmName)
                 .collection("AdditionalHolidays")
                 .get()
                 .await()
@@ -105,12 +109,13 @@ class HolidayRepository {
     suspend fun addAdditionalHolidays(
         holiday: String,
         onSuccess: () -> Unit,
-        onFailure: () -> Unit
+        onFailure: () -> Unit,
+        firmName:String,
     ) {
         try{
             database
-                .collection("Members")
-                .document(updateAdminNumber)
+                .collection("Firms")
+                .document(firmName)
                 .collection("AdditionalHolidays")
                 .document(UUID.randomUUID().toString())
                 .set(mapOf("holiday" to holiday)).await()
@@ -124,8 +129,14 @@ class HolidayRepository {
         festivals: List<Festival>,
         employeeNumber: String,
         onSuccess: () -> Unit,
-        onFailure: () -> Unit
+        onFailure: () -> Unit,
+        adminNumber: String
     ) {
+        val updateAdminNumber = if (adminNumber.startsWith("+91")) {
+            adminNumber
+        }else{
+            "+91$adminNumber"
+        }
         try {
             Log.d("Holiday", "$festivals, $employeeNumber")
             val batch = database.batch()
@@ -168,18 +179,24 @@ class HolidayRepository {
     }
 
     suspend fun saveRegularHolidays(
+        adminNumber: String,
         regularHolidays: RegularHolidayItems,
         employeeNumber: String,
         year: String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
+        val updatedAdminNumber = if (adminNumber.startsWith("+91")) {
+            adminNumber
+        }else{
+            "+91$adminNumber"
+        }
         try {
             val batch = database.batch()
             Log.d("Holiday", "$employeeNumber, $year, $regularHolidays")
             val yearDocRef = database
                 .collection("Members")
-                .document(updateAdminNumber)
+                .document(updatedAdminNumber)
                 .collection("Employee")
                 .document(employeeNumber)
                 .collection("Holidays")
@@ -204,9 +221,7 @@ class HolidayRepository {
     suspend fun fetchEmployeeData(
         employeePhoneNumber: String
     ): AddStaffDataClass {
-        val document = database.collection("Members")
-            .document(updateAdminNumber)
-            .collection("Employee")
+        val document = database.collection("Employee")
             .document(employeePhoneNumber)
             .get()
             .await()
@@ -218,11 +233,17 @@ class HolidayRepository {
 
     suspend fun getFestivalsForMonthAndYear(
         employeeNumber: String,
+        adminNumber: String,
         year: String,
         month: String,
         onSuccess: (List<Festival>) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        val updateAdminNumber = if (adminNumber.startsWith("+91")) {
+            adminNumber
+        } else {
+            "+91$adminNumber"
+        }
         try {
             val monthNumber = SimpleDateFormat("MMM", Locale.ENGLISH).parse(month)?.let {
                 SimpleDateFormat("M", Locale.ENGLISH).format(it)
@@ -238,16 +259,15 @@ class HolidayRepository {
                 .document(monthNumber.toString())
                 .collection("Details")
 
+            Log.d(tag, "Details Collection Reference: ${detailsCollectionRef.path}")
 
             // Fetch the data
             val snapshot = detailsCollectionRef.get().await()
 
+            Log.d(tag, "Snapshot: ${snapshot.documents}")
+
             // Map the documents to the Festival objects
             val festivals = snapshot.documents.mapNotNull { it.toObject(Festival::class.java) }
-
-            Log.d(tag, "Festivals: $festivals")
-            onSuccess(festivals)
-
 
             Log.d(tag, "Festivals: $festivals")
             onSuccess(festivals)
@@ -261,10 +281,16 @@ class HolidayRepository {
 
     suspend fun getRegularHolidaysForYear(
         employeeNumber: String,
+        adminNumber: String,
         year: String,
         onSuccess: (RegularHolidayItems?) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
+        val updateAdminNumber = if (adminNumber.startsWith("+91")) {
+            adminNumber
+        } else {
+            "+91$adminNumber"
+        }
         try {
             val holidaysRef = database
                 .collection("Members")
@@ -300,10 +326,16 @@ class HolidayRepository {
 
     suspend fun getMonthlyWorkHours(
         employeePhoneNumber: String,
+        adminNumber: String,
         year: String,
         month: String
     ): Map<String, Long> {
         val resultMap = mutableMapOf<String, Long>()
+        val updateAdminNumber = if (adminNumber.startsWith("+91")) {
+            adminNumber
+        } else {
+            "+91$adminNumber"
+        }
 
         try {
             val collectionRef = database.collection("Members")
@@ -335,9 +367,15 @@ class HolidayRepository {
 
     suspend fun getLeavesForMonthAndYear(
         employeePhoneNumber: String,
+        adminNumber: String,
         year: String,
         month: String
     ): List<EmployeeLeaveData> {
+        val updateAdminNumber = if (adminNumber.startsWith("+91")) {
+            adminNumber
+        } else {
+            "+91$adminNumber"
+        }
         val leaveList = mutableListOf<EmployeeLeaveData>()
         try {
             val yearDocRef = database.collection("Members")
@@ -373,9 +411,15 @@ class HolidayRepository {
 
     suspend fun fetchRecentWorkHourData(
         employeePhoneNumber: String,
+        adminNumber: String,
         month: String,
         year: String
     ): AddWorkingHourDataClass? {
+        val updateAdminNumber = if (adminNumber.startsWith("+91")) {
+            adminNumber
+        } else {
+            "+91$adminNumber"
+        }
         return try {
             val workHourCollectionRef = database
                 .collection("Members")

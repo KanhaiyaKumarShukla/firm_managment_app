@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Send
@@ -26,6 +27,7 @@ import com.rach.firmmanagement.dataClassImp.MessageDataClass
 import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.viewModel.ChatViewModel
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -140,52 +142,68 @@ fun ChatScreen(viewModel: ChatViewModel= viewModel(), loginViewModel: LoginViewM
 }
 */
 @Composable
-fun ChatScreen(viewModel: ChatViewModel = viewModel(), loginViewModel: LoginViewModel) {
+fun ChatScreen(viewModel: ChatViewModel = viewModel(), loginViewModel: LoginViewModel, profileViewModel: ProfileViewModel) {
     val messages by viewModel.messages.collectAsState()
     val inputMessage by viewModel.inputMessage.collectAsState()
-    val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
+    val adminPhoneNumber = employeeIdentity.adminNumber.toString()
+    val chatLoading by viewModel.loading.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.fetchMessages(adminPhoneNumber = adminPhoneNumber)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .imePadding(),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
+    if (loading || chatLoading) {
         Box(
             modifier = Modifier
-                .weight(1f) // Makes this part compress when the keyboard is active
-                .fillMaxWidth()
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
         ) {
-            MessageList(
-                messages = messages,
-                employeeNumber = viewModel.employeeNumber,
-                modifier = Modifier.fillMaxSize()
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
             )
         }
-
-        InputMessageBar(
-            inputMessage = inputMessage,
-            onMessageChange = viewModel::onChangeMessage,
-            onSendMessage = {
-                if (inputMessage.isNotEmpty()) {
-                    viewModel.sendMessage(
-                        adminPhoneNumber = adminPhoneNumber,
-                        message = MessageDataClass(
-                            senderName = viewModel.employeeNumber,
-                            receiverName = adminPhoneNumber,
-                            message = inputMessage,
-                            timestamp = System.currentTimeMillis()
-                        )
-                    )
-                    viewModel.onChangeMessage("")
-                }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .imePadding(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f) // Makes this part compress when the keyboard is active
+                    .fillMaxWidth()
+            ) {
+                MessageList(
+                    messages = messages,
+                    employeeNumber = viewModel.employeeNumber,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
-        )
+
+            InputMessageBar(
+                inputMessage = inputMessage,
+                onMessageChange = viewModel::onChangeMessage,
+                onSendMessage = {
+                    if (inputMessage.isNotEmpty()) {
+                        viewModel.sendMessage(
+                            adminPhoneNumber = adminPhoneNumber,
+                            message = MessageDataClass(
+                                senderName = viewModel.employeeNumber,
+                                receiverName = adminPhoneNumber,
+                                message = inputMessage,
+                                timestamp = System.currentTimeMillis()
+                            )
+                        )
+                        viewModel.onChangeMessage("")
+                    }
+                }
+            )
+        }
     }
 }
 @Composable

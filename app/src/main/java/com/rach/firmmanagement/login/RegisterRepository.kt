@@ -2,12 +2,14 @@ package com.rach.firmmanagement.login
 
 import android.util.Log
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
 class RegisterRepository {
 
 
     private val database = FirebaseDatabase.getInstance().reference
+    val firestoreDB = FirebaseFirestore.getInstance()
 
     suspend fun saveUserData(
         role: String,
@@ -18,11 +20,19 @@ class RegisterRepository {
     ) {
 
         try {
-            val roleCollection = if (role == "Employee") "employees" else "employers"
+            val roleCollection = "pendingEmployees"
 
             val userRef = database.child(roleCollection).child(phoneNumber)
             userRef.setValue(dataClassRegister).await()
 
+            val firmRef=firestoreDB.collection("Firms")
+                .document(dataClassRegister.firmName.toString())
+            firmRef.set(mapOf("placeholder" to true)) // Placeholder to ensure document exists
+                .await()
+            firmRef.collection(roleCollection)
+                .document(dataClassRegister.mobileNumber.toString())
+                .set(dataClassRegister)
+                .await()
             onSuccess()
 
         } catch (e: Exception) {
@@ -39,7 +49,7 @@ class RegisterRepository {
         phoneNumber: String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
-        ) {
+    ) {
 
         val roleCollection = if (role == "Employee") "employees" else "employers"
         val cleanPhoneNumber = phoneNumber.trim()

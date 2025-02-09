@@ -39,7 +39,7 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
         _festivals.value = updatedFestivals
     }
 
-    suspend fun fetchFestivals(year: String) {
+    suspend fun fetchFestivals(year: String, firmName:String) {
         _loading.value = true
         _error.value = null
         repository.getFestivals(
@@ -52,12 +52,13 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
             onFailure = {
                 _error.value = "Failed to fetch festivals."
                 _loading.value = false
-            }
+            },
+            firmName = firmName
         )
     }
 
 
-    fun addFestival(festival: Festival) {
+    fun addFestival(festival: Festival, firmName:String) {
         viewModelScope.launch {
             _loading.value = true
             _error.value = null
@@ -70,7 +71,8 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
                 onFailure = {
                     _error.value = "Failed to add festival."
                     _loading.value = false
-                }
+                },
+                firmName = firmName
             )
 
         }
@@ -78,7 +80,7 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
 
     private val _additionalHolidays = MutableStateFlow<List<String>>(emptyList())
     val additionalHolidays: StateFlow<List<String>> = _additionalHolidays
-    suspend fun fetchAdditionalHolidays() {
+    suspend fun fetchAdditionalHolidays(firmName: String) {
         _loading.value = true
         _error.value = null
         repository.fetchAdditionalHolidays(
@@ -90,11 +92,12 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
             onFailure = {
                 _error.value = "Failed to fetch festivals."
                 _loading.value = false
-            }
+            },
+            firmName = firmName
         )
     }
 
-    fun addAdditionalHolidays(holiday: String) {
+    fun addAdditionalHolidays(holiday: String, firmName:String) {
         viewModelScope.launch {
             _loading.value = true
             _error.value = null
@@ -107,11 +110,17 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
                 onFailure = {
                     _error.value = "Failed to add Holiday"
                     _loading.value = false
-                }
+                },
+                firmName = firmName
             )
         }
     }
-    fun saveRegularHolidaysForSelectedEmployees(selectedEmployees: List<ViewAllEmployeeDataClass>, regularHolidays: RegularHolidayItems, onSuccess: () -> Unit) {
+    fun saveRegularHolidaysForSelectedEmployees(
+        selectedEmployees: List<AddStaffDataClass>,
+        regularHolidays: RegularHolidayItems,
+        onSuccess: () -> Unit,
+        adminNumber:String,
+    ) {
         viewModelScope.launch {
             _loading.value = true
             _error.value = null
@@ -120,6 +129,7 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
                     repository.saveRegularHolidays(
                         regularHolidays = regularHolidays,
                         employeeNumber = employee.phoneNumber.toString(),
+                        adminNumber = adminNumber,
                         year=year.toString(),
                         onSuccess = {
                             _loading.value = false
@@ -138,7 +148,7 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
             }
         }
     }
-    fun saveFestivalHolidaysForSelectedEmployees(selectedEmployees: List<ViewAllEmployeeDataClass>, festivalHolidays: List<Festival>, onSuccess: () -> Unit) {
+    fun saveFestivalHolidaysForSelectedEmployees(selectedEmployees: List<AddStaffDataClass>, festivalHolidays: List<Festival>, onSuccess: () -> Unit, adminNumber: String) {
         viewModelScope.launch {
             _loading.value = true
             _error.value = null
@@ -152,7 +162,8 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
                         },
                         onFailure = {
                             _error.value = "Failed to save festival holidays for ${employee.name}"
-                        }
+                        },
+                        adminNumber = adminNumber
                     )
                 }
                 _loading.value = false
@@ -221,15 +232,16 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
     }
 
     // Fetch festivals for a specific month and year
-    fun getFestivalsForMonthAndYear(employeeNumber: String, year: String, month: String) {
+    fun getFestivalsForMonthAndYear(employeeNumber: String, adminNumber: String, year: String, month: String) {
         _festivalsLoading.value = true
         _festivalsError.value = null
         viewModelScope.launch {
             try {
                 repository.getFestivalsForMonthAndYear(
-                    employeeNumber,
-                    year,
-                    month,
+                    employeeNumber=employeeNumber,
+                    adminNumber = adminNumber,
+                    year=year,
+                    month=month,
                     onSuccess = { festivals ->
                         _festivalsHolidays.value = festivals
                     },
@@ -246,14 +258,15 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
     }
 
     // Fetch regular holidays for a specific year
-    fun getRegularHolidaysForYear(employeeNumber: String, year: String) {
+    fun getRegularHolidaysForYear(employeeNumber: String, adminNumber: String, year: String) {
         _regularHolidaysLoading.value = true
         _regularHolidaysError.value = null
         viewModelScope.launch {
             try {
                 repository.getRegularHolidaysForYear(
-                    employeeNumber,
-                    year,
+                    employeeNumber=employeeNumber,
+                    adminNumber = adminNumber,
+                    year=year,
                     onSuccess = { holidays ->
                         _regularHolidays.value = holidays
                     },
@@ -276,11 +289,16 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
     val workHourLoading: StateFlow<Boolean> get() = _workHourLoading
 
 
-    fun fetchMonthlyWorkHours(employeePhoneNumber: String, year: String, month: String) {
+    fun fetchMonthlyWorkHours(employeePhoneNumber: String, adminNumber:String, year: String, month: String) {
         viewModelScope.launch {
             try {
                 _workHourLoading.value = true
-                val workHours = repository.getMonthlyWorkHours(employeePhoneNumber, year, month)
+                val workHours = repository.getMonthlyWorkHours(
+                    employeePhoneNumber=employeePhoneNumber,
+                    adminNumber = adminNumber,
+                    year=year,
+                    month=month,
+                )
                 _monthlyWorkHours.value = workHours
                 _workHourLoading.value = false
             } catch (e: Exception) {
@@ -298,6 +316,7 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
 
     fun fetchLeavesForMonthAndYear(
         employeePhoneNumber: String,
+        adminNumber: String,
         year: String,
         month: String
     ) {
@@ -305,9 +324,10 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
             try {
                 _leaveLoading.value = true
                 val leaves = repository.getLeavesForMonthAndYear(
-                    employeePhoneNumber,
-                    year,
-                    month
+                    employeePhoneNumber=employeePhoneNumber,
+                    adminNumber = adminNumber,
+                    year=year,
+                    month=month,
                 )
                 _leaveLoading.value = false
                 _leaveData.value = leaves
@@ -323,6 +343,7 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
 
     fun fetchWorkHourData(
         employeePhoneNumber: String,
+        adminNumber: String,
         month: String,
         year: String
     ) {
@@ -330,9 +351,10 @@ class HolidayViewModel(private val repository: HolidayRepository) : ViewModel() 
             try {
                 _workHourLoading.value=true
                 val data = repository.fetchRecentWorkHourData(
-                    employeePhoneNumber,
-                    month,
-                    year
+                    employeePhoneNumber=employeePhoneNumber,
+                    adminNumber = adminNumber,
+                    year=year,
+                    month=month,
                 )
                 _workHourLoading.value=false
                 _workHourData.value = data

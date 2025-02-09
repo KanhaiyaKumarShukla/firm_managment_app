@@ -1,17 +1,13 @@
 package com.rach.firmmanagement.firmAdminOwner
 
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Text
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -21,17 +17,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.necessaryItem.CustomOutlinedTextFiled
 import com.rach.firmmanagement.necessaryItem.DatePickerHaiDialog
 import com.rach.firmmanagement.notification.MyNotification
 import com.rach.firmmanagement.ui.theme.FirmManagementTheme
+import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.launch
 /*
 @Composable
@@ -149,8 +147,9 @@ fun AddTask(viewModel: AdminViewModel = androidx.lifecycle.viewmodel.compose.vie
 
 @Composable
 fun AddTask(
-    adminViewModel: AdminViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
-    employeeViewModel: AllEmployeeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    allEmployeeViewModel: AllEmployeeViewModel,
+    adminViewModel: AdminViewModel = viewModel(),
+    profileViewModel: ProfileViewModel
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -158,17 +157,24 @@ fun AddTask(
     val submitDate by adminViewModel.submitionTaskDate.collectAsState()
     val task by adminViewModel.task.collectAsState()
     val progressbar by adminViewModel.state.collectAsState()
-    val selectedEmployees = remember { mutableStateOf(setOf<ViewAllEmployeeDataClass>()) }
-    val employees = employeeViewModel.employeeList.value // Assuming employee list comes from AdminViewModel
+    val selectedEmployees = remember { mutableStateOf(setOf<AddStaffDataClass>()) }
+    val employees = allEmployeeViewModel.employeeList.value // Assuming employee list comes from AdminViewModel
+    val employeeLoading by allEmployeeViewModel.isEmployeeLoading
     var isError by remember { mutableStateOf(false) }
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val identityLoading by profileViewModel.loading
+
     Box(modifier = Modifier.fillMaxSize()) {
-        if (progressbar) {
+        if (progressbar || employeeLoading || identityLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(
+                    color = blueAcha,
+                    strokeWidth = 4.dp
+                )
             }
         } else {
             Column(
@@ -223,6 +229,7 @@ fun AddTask(
                                 adminViewModel.onStateChange(true)
                                 adminViewModel.assignTask(
                                     selectedEmployees = selectedEmployees.value,
+                                    adminPhoneNumber=employeeIdentity.adminNumber.toString(),
                                     onSuccess = {
                                         Toast.makeText(context, "Task Assigned", Toast.LENGTH_LONG).show()
                                         adminViewModel.onStateChange(false)
@@ -254,6 +261,6 @@ fun AddTask(
 @Composable
 fun AddTaskPreview() {
     FirmManagementTheme {
-        AddTask()
+        AddTask(allEmployeeViewModel = AllEmployeeViewModel(), profileViewModel = ProfileViewModel())
     }
 }

@@ -3,6 +3,7 @@ package com.rach.firmmanagement.viewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.GeofenceItems
 import com.rach.firmmanagement.repository.GeofenceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,22 +23,22 @@ class GeofenceViewModel() : ViewModel() {
 
     }
 
-    fun saveGeofence(title:String, latitude: String, longitude: String, radius: String, employeeNo: String) {
-        val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
-            adminPhoneNumber
-        } else {
-            "+91$adminPhoneNumber"
-        }
+    fun saveGeofence(
+        title:String, latitude: String, longitude: String, radius: String, employeeIdentity: AddStaffDataClass,
+        onSuccess: (GeofenceItems) -> Unit,
+        onFailure: () -> Unit
+    ) {
+
         val geofenceData = GeofenceItems(
             title=title,
             longitude = longitude,
             latitude = latitude,
             radius = radius,
-            adminNo = updateAdminNumber,
-            empNo = employeeNo
+            adminNo = employeeIdentity.adminNumber,
+            firmName = employeeIdentity.firmName,
         )
 
-        repository.saveGeofence(geofenceData)
+        repository.saveGeofence(geofenceData, onSuccess, onFailure)
     }
 
 
@@ -47,11 +48,11 @@ class GeofenceViewModel() : ViewModel() {
         geofence.adminNo = adminPhoneNumber
         _geofences.value = _geofences.value + geofence
     }
-    fun fetchAllGeofences() {
+    fun fetchAllGeofences(firmName:String) {
 
         viewModelScope.launch {
             repository.getAllGeofences(
-                adminPhoneNumber,
+                firmName,
                 onSuccess = { geofenceList ->
                     _geofences.value = geofenceList
                 },

@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.Remark
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
@@ -56,6 +57,7 @@ import com.rach.firmmanagement.employee.RemarksListDialog
 import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -64,15 +66,18 @@ import java.util.*
 @Composable
 fun ViewAllTask(
     adminViewModel: AdminViewModel= viewModel(),
-    allEmployeeViewModel: AllEmployeeViewModel = viewModel()
+    allEmployeeViewModel: AllEmployeeViewModel,
+    profileViewModel: ProfileViewModel
 ) {
 
     val tasks = adminViewModel.tasks.collectAsState()
     val loading = adminViewModel.loading.collectAsState()
     val employees by allEmployeeViewModel.employeeList
-    val employeeLoading by allEmployeeViewModel.isLoading
+    val employeeLoading by allEmployeeViewModel.isEmployeeLoading
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val identityLoading by profileViewModel.loading
     LaunchedEffect(Unit) {
-        allEmployeeViewModel.loadAllEmployee()
+        allEmployeeViewModel.loadAllEmployee(employeeIdentity.firmName.toString())
     }
     LaunchedEffect(employees) {
         if(!employees.isEmpty()){
@@ -80,7 +85,7 @@ fun ViewAllTask(
         }
     }
 
-    if (loading.value or employeeLoading) { // Use .value for State objects
+    if (loading.value || employeeLoading || identityLoading) { // Use .value for State objects
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -107,24 +112,30 @@ fun ViewAllTask(
                             },
                             onFailure = {
                                 Log.d("TAG", "Failed to add remark")
-                            }
+                            },
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString()
                         )
                     },
                     fetchRemarks = {
                         adminViewModel.fetchRemarks(
                             isCommon = item.isCommon,
                             taskId = item.id,
-                            employeePhone = item.employeePhoneNumber
+                            employeePhone = item.employeePhoneNumber,
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString()
                         )
                     },
                     onDeleteClick = {
-                        adminViewModel.deleteTask(item)
+                        adminViewModel.deleteTask(
+                            task= item,
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString()
+                        )
                     },
                     addRealtimeRemarksListener = { onRemarksUpdated ->
                         adminViewModel.addRealtimeRemarksListener(
                             employeePhone = item.employeePhoneNumber,
                             taskId = item.id,
-                            onRemarksUpdated = onRemarksUpdated
+                            onRemarksUpdated = onRemarksUpdated,
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString()
                         )
                     }
                 )
@@ -136,14 +147,19 @@ fun ViewAllTask(
 @Composable
 fun ViewOneEmployeeTask(
     adminViewModel: AdminViewModel= viewModel(),
-    employee: ViewAllEmployeeDataClass
+    employee: AddStaffDataClass,
+    profileViewModel: ProfileViewModel
 ){
     val tasks = adminViewModel.oneEmployeeTask.collectAsState()
     val loading = adminViewModel.loading.collectAsState()
+
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val identityLoading by profileViewModel.loading
+
     LaunchedEffect(Unit) {
-        adminViewModel.loadOneEmployeeTask(employee)
+        adminViewModel.loadOneEmployeeTask(employee =  employee, adminPhoneNumber = employeeIdentity.adminNumber.toString())
     }
-    if (loading.value) { // Use .value for State objects
+    if (loading.value || identityLoading) { // Use .value for State objects
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -170,24 +186,30 @@ fun ViewOneEmployeeTask(
                             },
                             onFailure = {
                                 Log.d("TAG", "Failed to add remark")
-                            }
+                            },
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString()
                         )
                     },
                     fetchRemarks = {
                         adminViewModel.fetchRemarks(
                             isCommon = item.isCommon,
                             taskId = item.id,
-                            employeePhone = item.employeePhoneNumber
+                            employeePhone = item.employeePhoneNumber,
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString()
                         )
                     },
                     onDeleteClick = {
-                        adminViewModel.deleteTask(item)
+                        adminViewModel.deleteTask(
+                            task=item,
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString()
+                        )
                     },
                     addRealtimeRemarksListener = { onRemarksUpdated ->
                         adminViewModel.addRealtimeRemarksListener(
                             employeePhone = item.employeePhoneNumber,
                             taskId = item.id,
-                            onRemarksUpdated = onRemarksUpdated
+                            onRemarksUpdated = onRemarksUpdated,
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString()
                         )
                     }
                 )
@@ -459,6 +481,6 @@ fun findStatusOfTask(date: String): String {
 @Composable
 private fun Preview() {
     FirmManagementTheme {
-        ViewAllTask()
+        ViewAllTask(profileViewModel = ProfileViewModel(), allEmployeeViewModel = AllEmployeeViewModel())
     }
 }

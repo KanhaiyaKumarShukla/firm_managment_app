@@ -52,23 +52,26 @@ import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.viewModel.EmlAllTask
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.launch
 
 
 @Composable
 fun SeeTasks(
     viewModel: EmlAllTask,
-    loginViewModel: LoginViewModel,
+    profileViewModel: ProfileViewModel
 ) {
     val tasks = viewModel.taskList.value
     val isLoading = viewModel.isLoading.value
-    val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val identityLoding by profileViewModel.loading
+    val adminPhoneNumber = employeeIdentity.adminNumber.toString()
 
     LaunchedEffect(key1 = adminPhoneNumber) {
         viewModel.loadAllTask(adminPhoneNumber = adminPhoneNumber)
     }
 
-    if (isLoading) {
+    if (isLoading || identityLoding) {
 
         Box(
             modifier = Modifier

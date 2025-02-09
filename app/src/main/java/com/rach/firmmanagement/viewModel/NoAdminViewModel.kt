@@ -115,6 +115,7 @@ class NoAdminViewModel : ViewModel() {
         object OnPending : UiState()
         object EmployeeUi : UiState()
         object NoEmployee : UiState()
+        object AppOwner: UiState()
     }
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
@@ -137,6 +138,25 @@ class NoAdminViewModel : ViewModel() {
         _isRefresh.value = newState
     }
 
+    private val _gender =MutableStateFlow("Employee")
+    val gender:StateFlow<String> = _gender
+
+    fun getGender(){
+        viewModelScope.launch {
+            homeRepository.getGender(
+                phoneNumber = _phoneNumber.value,
+                dataFound = { gender->
+                    Log.d("Hins", "Data Found Gender: $gender")
+                    _gender.value=gender
+                },
+                noDataFound = {
+                    Log.d("Hins", "No Data Found Gender")
+                    _gender.value="Employee"
+                }
+            )
+        }
+    }
+
     fun checkUserExist(
         genderState: String,
         adminNumber: String,
@@ -148,7 +168,7 @@ class NoAdminViewModel : ViewModel() {
         Log.d("Hins", "Check UserExist: $genderState + $adminNumber")
         viewModelScope.launch {
             _isRefresh.value = true
-            if (genderState == "Employer") {
+            if (genderState == "Super Admin" || genderState=="Admin") {
                 homeRepository.checkEmployeeOrEmployee(
                     phoneNumber = _phoneNumber.value,
                     genderState = genderState,
@@ -168,7 +188,33 @@ class NoAdminViewModel : ViewModel() {
                 )
                 _isRefresh.value = false
 
-            } else {
+            }else if(genderState=="App Owner"){
+                progressState.value = true
+                homeRepository.checkEmployeeOrEmployee(
+                    phoneNumber = _phoneNumber.value,
+                    genderState = genderState,
+                    adminNumber = adminNumber,
+                    dataFound = {
+                        progressState.value = false
+                        onChangeUiState(UiState.AppOwner)
+                        dataFound()
+                    },
+                    noDataFound = {
+                        progressState.value = false
+                        onChangeUiState(UiState.OnFailure)
+                        noData()
+                    },
+                    pendingDataFound = {
+                        progressState.value = false
+                        onChangeUiState(UiState.OnPending)
+                        pendingData()
+
+                    }
+                )
+                _isRefresh.value = false
+
+            }
+            else {
 
                 progressState.value = true
 
@@ -205,9 +251,5 @@ class NoAdminViewModel : ViewModel() {
         }
 
     }
-
-
-
-
 
 }

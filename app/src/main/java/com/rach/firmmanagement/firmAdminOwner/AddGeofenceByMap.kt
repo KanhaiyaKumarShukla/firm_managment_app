@@ -39,13 +39,18 @@ import com.rach.firmmanagement.viewModel.GeofenceViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.lifecycle.lifecycleScope
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.launch
 
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @SuppressLint("MissingPermission", "UnrememberedMutableState")
 @Composable
-fun AddGeofenceByMap(activity: ComponentActivity, viewModel: GeofenceViewModel = viewModel()) {
+fun AddGeofenceByMap(
+    activity: ComponentActivity,
+    viewModel: GeofenceViewModel = viewModel(),
+    profileViewModel: ProfileViewModel
+) {
     var hasLocationPermission by remember { mutableStateOf(false) }
     var hasBackgroundLocationPermission by remember { mutableStateOf(false) }
     var isBatteryOptimizationIgnored by remember { mutableStateOf(false) }
@@ -75,8 +80,13 @@ fun AddGeofenceByMap(activity: ComponentActivity, viewModel: GeofenceViewModel =
     var selectedLatLng by remember { mutableStateOf<LatLng?>(null) }
     var showBatteryOptimizationDialog by remember { mutableStateOf(false) }
     // Check and request permissions
+
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val employeeLoading by profileViewModel.loading
+
+
     LaunchedEffect(Unit) {
-        viewModel.fetchAllGeofences()
+        viewModel.fetchAllGeofences(employeeIdentity.firmName.toString())
         if (ActivityCompat.checkSelfPermission(
                 activity,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -165,7 +175,7 @@ fun AddGeofenceByMap(activity: ComponentActivity, viewModel: GeofenceViewModel =
         Box(modifier = Modifier.padding(paddingValues)) {
 
      */
-            if (hasLocationPermission) {
+            if (hasLocationPermission || !employeeLoading) {
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
                     cameraPositionState = cameraPositionState,
@@ -220,7 +230,21 @@ fun AddGeofenceByMap(activity: ComponentActivity, viewModel: GeofenceViewModel =
                                     longitude = latLng.longitude.toString(),
                                     radius = radius,
                                     title = title,
-                                    employeeNo = "All"
+                                    employeeIdentity = employeeIdentity,
+                                    onSuccess = { it->
+                                        Toast.makeText(
+                                            context,
+                                            "Geofence ${it.title} saved successfully",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    onFailure = {
+                                        Toast.makeText(
+                                            context,
+                                            "Failed to save geofence",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 )
 
                                 viewModel.addGeofence(
@@ -230,7 +254,7 @@ fun AddGeofenceByMap(activity: ComponentActivity, viewModel: GeofenceViewModel =
                                         longitude = latLng.longitude.toString(),
                                         radius = radius,
                                         adminNo = "",
-                                        empNo = ""
+                                        firmName = employeeIdentity.firmName.toString()
                                     )
                                 )
                                 geofenceHelper.addGeofence(
@@ -248,7 +272,7 @@ fun AddGeofenceByMap(activity: ComponentActivity, viewModel: GeofenceViewModel =
                                             longitude = latLng.longitude.toString(),
                                             radius = radius,
                                             adminNo = "",
-                                            empNo = ""
+                                            firmName = employeeIdentity.firmName.toString()
                                         )
                                     )
                                 }
@@ -274,7 +298,7 @@ suspend fun saveGeofenceSharedPreference(context: Context, geofenceData: Geofenc
         val editor = prefs.edit()
         editor.putString(
             geofenceData.title,
-            "${geofenceData.latitude},${geofenceData.longitude},${geofenceData.radius}, ${geofenceData.adminNo}, ${geofenceData.empNo}, ${geofenceData.title}"
+            "${geofenceData.latitude},${geofenceData.longitude},${geofenceData.radius}, ${geofenceData.adminNo}, ${geofenceData.firmName}, ${geofenceData.title}"
         )
         editor.apply()
     }
@@ -290,7 +314,7 @@ fun getSavedGeofences(context: Context): List<GeofenceItems> {
             longitude = parts[1],
             radius = parts[2],
             adminNo = parts[3],
-            empNo = parts[4]
+            firmName = parts[4]
         )
     }
 }

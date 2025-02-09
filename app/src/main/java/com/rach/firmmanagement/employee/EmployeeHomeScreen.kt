@@ -59,13 +59,14 @@ import com.rach.firmmanagement.ui.theme.fontPoppinsMedium
 import com.rach.firmmanagement.viewModel.EmlAllTask
 import com.rach.firmmanagement.viewModel.LoginViewModel
 import com.rach.firmmanagement.viewModel.NoAdminViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmployeeHomeScreen(
     viewmodel: EmlAllTask,
-    loginViewModel: LoginViewModel,
+    profileViewModel: ProfileViewModel,
     navigateToSeeTask: () -> Unit,
     navigateToRaiseLeave: () -> Unit,
     navigateToAdvanceMoney: () -> Unit,
@@ -77,8 +78,10 @@ fun EmployeeHomeScreen(
 ) {
 
     val progressState by viewmodel.progressBarState.collectAsState()
-    val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
-    val employeeData by viewmodel.employees.collectAsState()
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
+    val adminPhoneNumber = employeeIdentity.adminNumber.toString()
+    val name = employeeIdentity.name.toString()
     val scope = rememberCoroutineScope()
 
 
@@ -87,18 +90,21 @@ fun EmployeeHomeScreen(
 
     LaunchedEffect(key1 = adminPhoneNumber) {
 
+        /*
         scope.launch {
             viewmodel.loadEmployeeData(
                 adminPhoneNumber = adminPhoneNumber
             )
         }
 
+         */
+
 
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        if (progressState) {
+        if (progressState || loading) {
             Box(modifier = Modifier.fillMaxSize())
             {
                 CircularProgressIndicator()
@@ -112,13 +118,12 @@ fun EmployeeHomeScreen(
 
                 // Top Welcome Section
                 // change
-                Log.d("Hins", employeeData.toString())
-                val name= employeeData.firstOrNull()?.name
-                val role=employeeData.firstOrNull()?.role
-                val joiningDate=employeeData.firstOrNull()?.registrationDate
+                Log.d("Hins", employeeIdentity.toString())
+                val role=employeeIdentity.role
+                val joiningDate=employeeIdentity.registrationDate
                 //employeeData.firstOrNull()?.let {
                     WelcomeSection(
-                        userName = name?: "-",
+                        userName = name,
                         role = role?: "-",
                         joiningDate = joiningDate ?: ""
                     )
@@ -294,7 +299,7 @@ fun EmployeeHomeScreenPreview() {
     FirmManagementTheme {
         EmployeeHomeScreen(
             viewmodel = EmlAllTask(),
-            loginViewModel = LoginViewModel(),
+            profileViewModel = ProfileViewModel(),
             {},
             {},
             {},

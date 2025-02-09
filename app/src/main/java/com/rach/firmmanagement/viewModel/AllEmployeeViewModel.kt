@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.OutForWork
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
@@ -31,10 +32,15 @@ class AllEmployeeViewModel(
 ) :ViewModel(){
 
 
-    var employeeList = mutableStateOf<List<ViewAllEmployeeDataClass>>(emptyList())
+    var employeeList = mutableStateOf<List<AddStaffDataClass>>(emptyList())
         private set
 
-    var isLoading = mutableStateOf(true)
+    var adminList= mutableStateOf<List<AddStaffDataClass>>(emptyList())
+    private set
+
+    var isEmployeeLoading = mutableStateOf(true)
+        private set
+    var isAdminLoading = mutableStateOf(true)
         private set
 
     var isAssigningTask = mutableStateOf(false)
@@ -53,24 +59,32 @@ class AllEmployeeViewModel(
         Log.d("TAG", "new data: $newDate, ${selectedDate.value}")
     }
 
-    init {
-        loadAllEmployee()
-        Log.d("TAG", "new Instance")
-    }
 
-
-     fun loadAllEmployee(){
+     fun loadAllEmployee(firmName:String){
         viewModelScope.launch {
-            isLoading.value = true
+            isEmployeeLoading.value = true
             repository.viewAllEmployee(
-                viewAllEmployeeDataClass = ViewAllEmployeeDataClass(),
+                firmName=firmName,
                 onSuccess = {employee ->
                     employeeList.value = employee
-                    isLoading.value = false
+                    isEmployeeLoading.value = false
 
                 },
                 onFailure = {
-                    isLoading.value = false
+                    isEmployeeLoading.value = false
+
+                }
+            )
+
+            repository.viewAllAdmin(
+                firmName=firmName,
+                onSuccess = {employee ->
+                    adminList.value = employee
+                    isAdminLoading.value = false
+
+                },
+                onFailure = {
+                    isAdminLoading.value = false
 
                 }
             )
@@ -78,17 +92,48 @@ class AllEmployeeViewModel(
         }
     }
 
-    fun deleteEmployee(phoneNumber: String) {
+    fun deleteEmployee(phoneNumber: String, firmName: String, onSuccess: () -> Unit, onFailure: () -> Unit) {
         viewModelScope.launch {
             try {
-                repository.deleteEmployee(phoneNumber)
-                loadAllEmployee() // Refresh the list after deletion
+                repository.deleteEmployee(
+                    phoneNumber,
+                    onSuccess = {
+                        loadAllEmployee(firmName)
+                        onSuccess()
+                    },
+                    onFailure = onFailure
+                )
+                 // Refresh the list after deletion
             } catch (e: Exception) {
                 // Handle exception
             }
         }
     }
+    fun updateEmployeesToAdmin(
+        selectedEmployees: List<AddStaffDataClass>,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit,
+        firmName: String
+    ){
+        viewModelScope.launch{
+            try {
+                repository.updateEmployeesToAdmin(
+                    selectedEmployees,
+                    onSuccess = {
+                        loadAllEmployee(firmName)
+                        onSuccess()
+                    },
+                    onFailure = {
+                        onFailure()
+                    }
+                )
+            }catch (e:Exception){
+                onFailure()
+            }
+        }
+    }
 
+    /*
     fun updateEmployeeSelection(phoneNumber: String, isSelected: Boolean) {
         val updatedEmployees = employeeList.value.map { employee ->
             if (employee.phoneNumber == phoneNumber) {
@@ -100,6 +145,9 @@ class AllEmployeeViewModel(
         employeeList.value = updatedEmployees
     }
 
+     */
+
+    /*
     fun assignTaskToSelectedEmployees(task: String,context: Context) {
 
         isAssigningTask.value = true
@@ -143,6 +191,8 @@ class AllEmployeeViewModel(
         }
         isAssigningTask.value = false
     }
+
+     */
 
     private val _punchInOutAttendanceDetails = MutableStateFlow<List<PunchInPunchOut>>(emptyList())
     val punchInOutAttendanceDetails:StateFlow<List<PunchInPunchOut>?> = _punchInOutAttendanceDetails

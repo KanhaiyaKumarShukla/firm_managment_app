@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Button
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.OutlinedTextField
@@ -31,137 +33,171 @@ import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.ui.theme.fontPoppinsMedium
 import com.rach.firmmanagement.viewModel.GeofenceViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 
 @Composable
-fun AddGeofence(viewModel: GeofenceViewModel=viewModel(), navigateToAddGeofenceByMap: ()->Unit) {
+fun AddGeofence(
+    viewModel: GeofenceViewModel=viewModel(),
+    navigateToAddGeofenceByMap: ()->Unit,
+    profileViewModel: ProfileViewModel
+) {
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
     var radius by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
     val context = LocalContext.current
     val buttonState by viewModel.onButtonClicked.collectAsState()
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
 
     val latError = buttonState && latitude.isEmpty()
     val longError = buttonState && longitude.isEmpty()
     val radiusError = buttonState && radius.isEmpty()
     val titleError = buttonState && title.isEmpty()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        ElevatedCard(
+    if (loading) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth(),
-            elevation = CardDefaults.elevatedCardElevation(),
-
-            ) {
-            Column(
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            ElevatedCard(
                 modifier = Modifier
-                    .fillMaxWidth().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Add New Work Center", fontSize = 20.sp, style = fontPoppinsMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(10.dp)
-                )
-                Text(
-                    text = "Please Fill Your Details", fontSize = 18.sp,
-                    style = fontPoppinsMedium
-                )
+                    .fillMaxWidth(),
+                elevation = CardDefaults.elevatedCardElevation(),
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    isError = titleError,
-                    readOnly = false
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = latitude,
-                    onValueChange = { latitude = it },
-                    label = { Text("Latitude") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    isError = latError,
-                    readOnly = false
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = longitude,
-                    onValueChange = { longitude = it },
-                    label = { Text("Longitude") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    isError = longError,
-                    readOnly = false
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = radius,
-                    onValueChange = { radius = it },
-                    label = { Text("Radius") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    isError = radiusError,
-                    readOnly = false
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Button(
-                        onClick = {
-                            viewModel.onButtonStateChange(true)
-                            if (latitude.isNotEmpty() && longitude.isNotEmpty() && radius.isNotEmpty()) {
-                                viewModel.saveGeofence(
-                                    latitude = latitude,
-                                    longitude = longitude,
-                                    radius = radius,
-                                    title = title,
-                                    employeeNo = "All"
-                                )
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    "Please fill all fields",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            blueAcha
-                        )
-                    ) {
-                        Text(
-                            "Save",
-                            style = fontBablooBold,
-                            color = Color.White
-                        )
-                    }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Add New Work Center", fontSize = 20.sp, style = fontPoppinsMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                    Text(
+                        text = "Please Fill Your Details", fontSize = 18.sp,
+                        style = fontPoppinsMedium
+                    )
 
-                    Button(
-                        onClick = {
-                            navigateToAddGeofenceByMap()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            blueAcha
-                        )
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Title") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        isError = titleError,
+                        readOnly = false
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = latitude,
+                        onValueChange = { latitude = it },
+                        label = { Text("Latitude") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        isError = latError,
+                        readOnly = false
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = longitude,
+                        onValueChange = { longitude = it },
+                        label = { Text("Longitude") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        isError = longError,
+                        readOnly = false
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = radius,
+                        onValueChange = { radius = it },
+                        label = { Text("Radius") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        isError = radiusError,
+                        readOnly = false
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            "Using Google Map",
-                            style = fontBablooBold,
-                            color = Color.White
-                        )
+                        Button(
+                            onClick = {
+                                viewModel.onButtonStateChange(true)
+                                if (latitude.isNotEmpty() && longitude.isNotEmpty() && radius.isNotEmpty()) {
+                                    viewModel.saveGeofence(
+                                        latitude = latitude,
+                                        longitude = longitude,
+                                        radius = radius,
+                                        title = title,
+                                        employeeIdentity=employeeIdentity,
+                                        onSuccess = { it->
+                                            Toast.makeText(
+                                                context,
+                                                "Geofence ${it.title} saved successfully",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        },
+                                        onFailure = {
+                                            Toast.makeText(
+                                                context,
+                                                "Failed to save geofence",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    )
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Please fill all fields",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                blueAcha
+                            )
+                        ) {
+                            Text(
+                                "Save",
+                                style = fontBablooBold,
+                                color = Color.White
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                navigateToAddGeofenceByMap()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                blueAcha
+                            )
+                        ) {
+                            Text(
+                                "Using Google Map",
+                                style = fontBablooBold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }

@@ -1,5 +1,6 @@
 package com.rach.firmmanagement.navigation
 
+import android.net.Uri
 import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Log
@@ -23,6 +24,7 @@ import com.google.gson.reflect.TypeToken
 import com.rach.firmmanagement.HomeScreen.AdminPanelScreen
 import com.rach.firmmanagement.HomeScreen.EmployeeProfileEditableScreen
 import com.rach.firmmanagement.HomeScreen.ScreensManage
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.MessageDataClass
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.employee.ChatScreen
@@ -36,10 +38,11 @@ import com.rach.firmmanagement.firmAdminOwner.AdminMessageScreen
 import com.rach.firmmanagement.firmAdminOwner.AllEmployeeAttendance
 import com.rach.firmmanagement.firmAdminOwner.EmployeeAttendance
 import com.rach.firmmanagement.firmAdminOwner.EmployeeSalaryScreen
-import com.rach.firmmanagement.firmAdminOwner.Expense
 import com.rach.firmmanagement.firmAdminOwner.GetWorkHours
 import com.rach.firmmanagement.firmAdminOwner.HolidayAddScreen
 import com.rach.firmmanagement.firmAdminOwner.HolidayTabMenu
+import com.rach.firmmanagement.firmAdminOwner.Regularization
+import com.rach.firmmanagement.firmAdminOwner.RegularizationScreen
 import com.rach.firmmanagement.firmAdminOwner.ScreenAdmin
 import com.rach.firmmanagement.firmAdminOwner.ViewAllEmployee
 import com.rach.firmmanagement.firmAdminOwner.ViewAllEmployeeExpense
@@ -54,7 +57,10 @@ import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.HolidayViewModel
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
+import com.rach.firmmanagement.viewModel.RegularizationViewModel
 import kotlinx.coroutines.launch
+import java.net.URLDecoder
 
 @SuppressLint("StateFlowValueCalledInComposition")
 @RequiresApi(Build.VERSION_CODES.O)
@@ -62,10 +68,12 @@ import kotlinx.coroutines.launch
 fun Navigation2(){
 
     val navController = rememberNavController()
-    val emViewModel : AllEmployeeViewModel = viewModel()
+    val allEmployeeViewModel : AllEmployeeViewModel = viewModel()
     val adminViewModel:AdminViewModel = viewModel()
     val workHoursViewModel: AddWorkHourViewModel= viewModel()
     val loginViewModel:LoginViewModel = viewModel()
+    val profileViewModel: ProfileViewModel = viewModel()
+
 
     NavHost(navController = navController, startDestination = ScreenAdmin.AdminPanel.route) {
 
@@ -80,12 +88,15 @@ fun Navigation2(){
                navigateToEmployeeAttendance={navController.navigate(ScreenAdmin.AllEmployeeAttendance.route)},
                navigateToAllExpense={navController.navigate(ScreenAdmin.AllExpenses.route)},
                navigateToAddGeofence={navController.navigate(ScreenAdmin.AddGeofence.route)},
-               navigateToChatScreen={navController.navigate(ScreenAdmin.AdminChatScreen.route)}
+               navigateToChatScreen={navController.navigate(ScreenAdmin.AdminChatScreen.route)},
+               navigateToRegularization={navController.navigate(ScreenAdmin.Regularization.route)},
+               allEmployeeViewModel = allEmployeeViewModel,
+               profileViewModel = profileViewModel
            )
         }
 
         composable(ScreenAdmin.AddEmployee.route){
-            AddStaff(navController=navController)
+            AddStaff(navController=navController, profileViewModel = profileViewModel, allEmployeeViewModel = allEmployeeViewModel)
         }
 
         composable(ScreenAdmin.AddHoliday.route) {
@@ -93,42 +104,78 @@ fun Navigation2(){
             val viewModel: HolidayViewModel = viewModel(
                 factory = HolidayViewModelFactory(repository)
             )
-            HolidayAddScreen(holidayViewModel = viewModel)
+            HolidayAddScreen(holidayViewModel = viewModel, profileViewModel = profileViewModel, viewModel = allEmployeeViewModel)
         }
 
         composable(ScreenAdmin.AddWorkHours.route) {
-            AddWorkHoursScreen()
+            AddWorkHoursScreen(allEmployeeViewModel=allEmployeeViewModel, profileViewModel = profileViewModel)
         }
 
         composable(ScreenAdmin.ViewEmployee.route){
-            ViewAllEmployee(navController = navController)
+            ViewAllEmployee(navController = navController, profileViewModel = profileViewModel, viewModel = allEmployeeViewModel)
 
         }
 
         composable(ScreenAdmin.AddTask.route){
-            AddTask()
+            AddTask(allEmployeeViewModel=allEmployeeViewModel, profileViewModel = profileViewModel)
         }
 
         composable(ScreenAdmin.ViewAllTask.route){
-            ViewAllTask()
+            ViewAllTask(profileViewModel = profileViewModel, allEmployeeViewModel = allEmployeeViewModel)
         }
         composable(ScreenAdmin.AllEmployeeAttendance.route){
-            AllEmployeeAttendance()
+            AllEmployeeAttendance(profileViewModel=profileViewModel, allEmployeeViewModel = allEmployeeViewModel)
         }
 
         composable(ScreenAdmin.AllExpenses.route){
-            ViewAllEmployeeExpense(adminViewModel=adminViewModel)
+            ViewAllEmployeeExpense(adminViewModel=adminViewModel, viewModel = allEmployeeViewModel, profileViewModel = profileViewModel)
         }
 
         composable(ScreenAdmin.AddGeofence.route){
-            AddGeofence(navigateToAddGeofenceByMap = {navController.navigate(ScreenAdmin.AddGeofenceByMap.route)})
+            AddGeofence(navigateToAddGeofenceByMap = {navController.navigate(ScreenAdmin.AddGeofenceByMap.route)}, profileViewModel = profileViewModel)
         }
+
+        composable(ScreenAdmin.Regularization.route) {
+            Regularization(
+                navigateToEmployeeRequest = {
+                    navController.navigate(ScreenAdmin.RegularizationScreen.createRoute("Employee"))
+                },
+                navigateToExpensesRequest = {
+                    navController.navigate(ScreenAdmin.RegularizationScreen.createRoute("Expense"))
+                },
+                navigateToAttendanceRequest = {
+                    // Navigation code for Attendance
+                    navController.navigate(ScreenAdmin.RegularizationScreen.createRoute("Attendance"))
+                },
+                navigateToLeaveRequest = {
+                    navController.navigate(ScreenAdmin.RegularizationScreen.createRoute("Leave"))
+                },
+                navigateToAdvanceRequest = {
+                    navController.navigate(ScreenAdmin.RegularizationScreen.createRoute("Advance"))
+                }
+            )
+        }
+
+        composable(
+            ScreenAdmin.RegularizationScreen.route,
+            arguments = listOf(navArgument("categoryName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
+            val viewModel: RegularizationViewModel = viewModel()
+
+            RegularizationScreen(
+                categoryName = categoryName,
+                viewModel = viewModel,
+                profileViewModel = profileViewModel
+            )
+        }
+
 
         composable(ScreenAdmin.AddGeofenceByMap.route){
             val activity = LocalContext.current as? ComponentActivity
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 if (activity != null) {
-                    AddGeofenceByMap(activity = activity)
+                    AddGeofenceByMap(activity = activity, profileViewModel = profileViewModel)
                 } else {
                     Text("Error: Unable to retrieve activity context.")
                 }
@@ -141,12 +188,16 @@ fun Navigation2(){
             ScreenAdmin.HolidayTabMenu.route + "/{selectedEmployee}",
             arguments = listOf(navArgument("selectedEmployee") { type = NavType.StringType })
         ) { backStackEntry ->
-            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")
+            val selectedEmployeeJson = URLDecoder.decode(
+                backStackEntry.arguments?.getString("selectedEmployee") ?: "",
+                "UTF-8"
+            )
+
             Log.d("JSON_DEBUG", selectedEmployeeJson ?: "Null JSON")
 
-            val selectedEmployee: List<ViewAllEmployeeDataClass> = Gson().fromJson(
+            val selectedEmployee: List<AddStaffDataClass> = Gson().fromJson(
                 selectedEmployeeJson,
-                object : TypeToken<List<ViewAllEmployeeDataClass>>() {}.type
+                object : TypeToken<List<AddStaffDataClass>>() {}.type
             )
             Log.d("JSON_DEBUG", selectedEmployee.toString())
             val repository = HolidayRepository()
@@ -158,7 +209,8 @@ fun Navigation2(){
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab=it },
                 selectedEmployees = selectedEmployee.toSet(),
-                holidayViewModel = viewModel
+                holidayViewModel = viewModel,
+                profileViewModel = profileViewModel
             )
         }
 
@@ -166,12 +218,13 @@ fun Navigation2(){
             ScreenAdmin.WorkHours.route + "/{selectedEmployee}",
             arguments = listOf(navArgument("selectedEmployee") { type = NavType.StringType })
         ) { backStackEntry ->
+
             val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")
             Log.d("JSON_DEBUG", selectedEmployeeJson ?: "Null JSON")
 
-            val selectedEmployee: List<ViewAllEmployeeDataClass> = Gson().fromJson(
+            val selectedEmployee: List<AddStaffDataClass> = Gson().fromJson(
                 selectedEmployeeJson,
-                object : TypeToken<List<ViewAllEmployeeDataClass>>() {}.type
+                object : TypeToken<List<AddStaffDataClass>>() {}.type
             )
             Log.d("JSON_DEBUG", selectedEmployee.toString())
 
@@ -181,6 +234,7 @@ fun Navigation2(){
             val endTime = remember { mutableStateOf("") }
             val context = LocalContext.current
             val scope = rememberCoroutineScope()
+            val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
             GetWorkHours(
                 date = date.value,
                 onDateChange = { date.value = it },
@@ -194,7 +248,7 @@ fun Navigation2(){
                     scope.launch {
                         workHoursViewModel.onChangeIsLoading(true)
                         workHoursViewModel.addWorkHoursForEmployees(
-                            selectedEmployee.toSet(),
+                            selectedEmployees=selectedEmployee.toSet(),
                             onSuccess = {
                                 Toast.makeText(
                                     context,
@@ -222,7 +276,8 @@ fun Navigation2(){
                                     message = "Working Hour Addition Failed. Please Try Again."
                                 )
                                 notification.fireNotification()
-                            }
+                            },
+                            adminPhoneNumber = employeeIdentity.adminNumber.toString()
                         )
                     }
 
@@ -234,11 +289,12 @@ fun Navigation2(){
             "${ScreenAdmin.EmployeeAttendance.route}/{selectedEmployee}",
             arguments = listOf(navArgument("selectedEmployee") { type = NavType.StringType })
         ) { backStackEntry ->
-            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")
-            val selectedEmployee = Gson().fromJson<ViewAllEmployeeDataClass>(
+            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")?.let { Uri.decode(it) }
+            val selectedEmployee = Gson().fromJson<AddStaffDataClass>(
                 selectedEmployeeJson,
-                ViewAllEmployeeDataClass::class.java
+                AddStaffDataClass::class.java
             )
+            val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
             EmployeeAttendance(
                 selectedEmployees = setOf(selectedEmployee),
                 attendanceData = adminViewModel.attendance.collectAsState().value,
@@ -246,10 +302,17 @@ fun Navigation2(){
                 toDate = adminViewModel.toDate.collectAsState().value,
                 selectedMonth = adminViewModel.selectedMonth.collectAsState().value,
                 onFetchAttendance = { selectedEmployees, month, from, to ->
-                    adminViewModel.fetchAttendance(selectedEmployees = selectedEmployees.toList(), selectedMonth = month, from = from, to = to)
+                    adminViewModel.fetchAttendance(
+                        selectedEmployees = selectedEmployees.toList(),
+                        adminPhoneNumber = employeeIdentity.adminNumber.toString(),
+                        selectedMonth = month,
+                        from = from,
+                        to = to,
+                    )
                 },
                 onMonthChange = { adminViewModel.onChangeSelectedMonth(it) },
                 attendanceLoading = adminViewModel.loading.collectAsState().value,
+                employeeIdentityLoading = profileViewModel.loading.value,
                 onDateRangeChange = { from, to ->
                     adminViewModel.onChangeAttendanceFromDate(from)
                     adminViewModel.onChangeAttendanceToDate(to)
@@ -262,13 +325,14 @@ fun Navigation2(){
             arguments = listOf(navArgument("selectedEmployee") { type = NavType.StringType })
         ){
             backStackEntry ->
-            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")
-            val selectedEmployee = Gson().fromJson<ViewAllEmployeeDataClass>(
+            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")?.let { Uri.decode(it) }
+            val selectedEmployee = Gson().fromJson<AddStaffDataClass>(
                 selectedEmployeeJson,
-                ViewAllEmployeeDataClass::class.java
+                AddStaffDataClass::class.java
             )
             ViewOneEmployeeTask(
-                employee = selectedEmployee
+                employee = selectedEmployee,
+                profileViewModel = profileViewModel
             )
         }
 
@@ -276,13 +340,14 @@ fun Navigation2(){
             "${ScreenAdmin.EmployeeProfile.route}/{selectedEmployee}",
             arguments = listOf(navArgument("selectedEmployee") { type = NavType.StringType })
         ) { backStackEntry ->
-            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")
-            val selectedEmployee = Gson().fromJson(
+            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")?.let { Uri.decode(it) }
+            val selectedEmployee = Gson().fromJson<AddStaffDataClass>(
                 selectedEmployeeJson,
-                ViewAllEmployeeDataClass::class.java
+                AddStaffDataClass::class.java
             )
             EmployeeProfileEditableScreen(
-                employee = selectedEmployee
+                employee = selectedEmployee,
+                profileViewModel = profileViewModel
             )
         }
 
@@ -290,10 +355,10 @@ fun Navigation2(){
             "${ScreenAdmin.EmployeeExpense.route}/{selectedEmployee}",
             arguments = listOf(navArgument("selectedEmployee") { type = NavType.StringType })
         ){backStackEntry ->
-            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")
-            val selectedEmployee = Gson().fromJson<ViewAllEmployeeDataClass>(
+            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployee")?.let { Uri.decode(it) }
+            val selectedEmployee = Gson().fromJson<AddStaffDataClass>(
                 selectedEmployeeJson,
-                ViewAllEmployeeDataClass::class.java
+                AddStaffDataClass::class.java
             )
             ViewEmployeeExpense(
                 adminViewModel = adminViewModel,
@@ -316,14 +381,17 @@ fun Navigation2(){
         }
 
         composable(ScreenAdmin.AdminChatScreen.route){
-            AdminChatScreen()
+            AdminChatScreen(allEmployeeViewModel = allEmployeeViewModel, profileViewModel = profileViewModel)
         }
         composable(
             "${ScreenAdmin.AdminMessage.route}/{selectedEmployees}",
             arguments = listOf(navArgument("selectedEmployees") { type = NavType.StringType })
         ) { backStackEntry ->
-            val selectedEmployeesJson = backStackEntry.arguments?.getString("selectedEmployees")
-            val selectedEmployees = Gson().fromJson(selectedEmployeesJson, Array<ViewAllEmployeeDataClass>::class.java).toSet()
+            val selectedEmployeesJson = URLDecoder.decode(
+                backStackEntry.arguments?.getString("selectedEmployees") ?: "",
+                "UTF-8"
+            )
+            val selectedEmployees = Gson().fromJson(selectedEmployeesJson, Array<AddStaffDataClass>::class.java).toSet()
             Log.d("Chat", selectedEmployees.toString())
             val inputMessage by adminViewModel.inputMessage.collectAsState()
             val messages by adminViewModel.messages.collectAsState()
@@ -363,14 +431,17 @@ fun Navigation2(){
             )
         }
         composable(ScreenAdmin.EmployeeChat.route){
-            ChatScreen(loginViewModel = loginViewModel)
+            ChatScreen(loginViewModel = loginViewModel, profileViewModel = profileViewModel)
         }
         composable(
             "${ScreenAdmin.EmployeeSalary.route}/{selectedEmployeeJson}",
             arguments = listOf(navArgument("selectedEmployeeJson") { type = NavType.StringType })
         ) { backStackEntry ->
-            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployeeJson")
-            val selectedEmployee = Gson().fromJson(selectedEmployeeJson, ViewAllEmployeeDataClass::class.java)
+            val selectedEmployeeJson = backStackEntry.arguments?.getString("selectedEmployeeJson")?.let { Uri.decode(it) }
+            val selectedEmployee = Gson().fromJson<AddStaffDataClass>(
+                selectedEmployeeJson,
+                AddStaffDataClass::class.java
+            )
 
             val repository = HolidayRepository()
             val viewModel: HolidayViewModel = viewModel(

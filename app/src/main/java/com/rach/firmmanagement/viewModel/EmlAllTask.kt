@@ -310,11 +310,11 @@ class EmlAllTask(
     private val _geofences = MutableStateFlow<List<GeofenceItems>>(emptyList())
     val geofences: StateFlow<List<GeofenceItems>> = _geofences
     fun getGeofence(
-        adminPhoneNumber: String
+        firmName: String
     ){
         viewModelScope.launch {
             geofenceRepository.getAllGeofences(
-                adminPhoneNumber,
+                firmName,
                 onSuccess = { geofenceList ->
                     _geofences.value = geofenceList
                 },
@@ -406,9 +406,11 @@ class EmlAllTask(
     }
 
     fun setOutForWork(
+        firmName: String,
         adminPhoneNumber: String,
         newValue:Int,
         name: String,
+        phoneNumber:String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ){
@@ -416,9 +418,11 @@ class EmlAllTask(
             _gola.value = true
             try {
                 punchRepo.setOutForWork(
+                    firmName = firmName,
                     adminPhoneNumber = adminPhoneNumber,
                     newValue = newValue,
                     name = name,
+                    phoneNumber = phoneNumber,
                     onSuccess = {
                         _gola.value = false // Reset loading state
                         onSuccess()

@@ -8,28 +8,24 @@ import com.rach.firmmanagement.dataClassImp.GeofenceItems
 class GeofenceRepository {
     val database = FirebaseFirestore.getInstance()
 
-    fun saveGeofence(geofence: GeofenceItems) {
-        database.collection("Members")
-            .document(geofence.adminNo.toString())
+    fun saveGeofence(geofence: GeofenceItems, onSuccess: (GeofenceItems) -> Unit, onFailure: () -> Unit) {
+        database.collection("Firms")
+            .document(geofence.firmName.toString())
             .collection("WorkCenters")
             .add(geofence)
             .addOnSuccessListener {
                 Log.d("Geofence", "Geofence saved successfully")
+                onSuccess(geofence)
             }
             .addOnFailureListener { e ->
                 Log.e("Geofence", "Error saving geofence", e)
+                onFailure()
             }
     }
 
-    fun getAllGeofences(adminPhoneNumber: String, onSuccess: (List<GeofenceItems>) -> Unit, onFailure: () -> Unit) {
-        val updatedAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
-            adminPhoneNumber
-        } else {
-            "+91$adminPhoneNumber"
-        }
-
-        database.collection("Members")
-            .document(updatedAdminNumber)
+    fun getAllGeofences(firmName: String, onSuccess: (List<GeofenceItems>) -> Unit, onFailure: () -> Unit) {
+        database.collection("Firms")
+            .document(firmName)
             .collection("WorkCenters")
             .get()
             .addOnSuccessListener { snapshot ->

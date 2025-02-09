@@ -47,17 +47,21 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.text.font.FontWeight
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.employee.NoDataFound
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Expense(viewModel: AdminViewModel) {
+fun Expense(viewModel: AdminViewModel, profileViewModel: ProfileViewModel) {
     val context = LocalContext.current
     var selectedIdentity by remember { mutableStateOf("") }
     val monthYearFormat = SimpleDateFormat("MM/yyyy", Locale.getDefault())
     var selectedMonth by remember {
         mutableStateOf(SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Calendar.getInstance().time))
     }
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
 
     Column(
         modifier = Modifier
@@ -123,7 +127,8 @@ fun Expense(viewModel: AdminViewModel) {
                 viewModel.getExpensesForMonth(
                     employeeNumber = selectedIdentity,
                     month = onMonthChange(month),
-                    year = year.toString()
+                    year = year.toString(),
+                    adminPhoneNumber = employeeIdentity.adminNumber.toString()
                 )
                 Log.d("ExpensesData", "$month, ${onMonthChange(month)}, $year")
             },
@@ -151,11 +156,13 @@ fun Expense(viewModel: AdminViewModel) {
 @Composable
 fun ViewAllEmployeeExpense(
     adminViewModel: AdminViewModel,
-    viewModel: AllEmployeeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    viewModel: AllEmployeeViewModel,
+    profileViewModel: ProfileViewModel
 ) {
-    val selectedEmployees = remember { mutableStateOf(setOf<ViewAllEmployeeDataClass>()) }
+    val selectedEmployees = remember { mutableStateOf(setOf<AddStaffDataClass>()) }
     var selectedTab by remember { mutableStateOf("All Employees") }
     val employees = viewModel.employeeList.value
+    val employeeLoading = viewModel.isEmployeeLoading.value
     val isLoading by adminViewModel.loadingEmployeeExpense.collectAsState()
 
     val employeeExpenses by adminViewModel.employeeExpense.collectAsState(initial = emptyList())
@@ -168,9 +175,12 @@ fun ViewAllEmployeeExpense(
     val toDate by adminViewModel.toDate.collectAsState()
     val context = LocalContext.current
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val identityLoading by profileViewModel.loading
+
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (isLoading) {
+        if (isLoading || employeeLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -368,7 +378,7 @@ fun ViewAllEmployeeExpense(
 @Composable
 fun ViewEmployeeExpense(
     adminViewModel: AdminViewModel,
-    selectedEmployee: Set<ViewAllEmployeeDataClass>,
+    selectedEmployee: Set<AddStaffDataClass>,
     modifier: Modifier = Modifier,
     fromDate: String,
     toDate: String,
@@ -376,7 +386,7 @@ fun ViewEmployeeExpense(
     expenseLoading: Boolean,
     onMonthChange: (String) -> Unit,
     onDateRangeChange: (String, String) -> Unit,
-    onFetchExpense: (Set<ViewAllEmployeeDataClass>, String, String, String) -> Unit,
+    onFetchExpense: (Set<AddStaffDataClass>, String, String, String) -> Unit,
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
@@ -677,5 +687,5 @@ fun onMonthChange(newMonth: Int):String {
 @Preview(showBackground = true)
 @Composable
 fun PreviewExpenseList() {
-    Expense(viewModel = AdminViewModel())
+    Expense(viewModel = AdminViewModel(), profileViewModel = ProfileViewModel())
 }

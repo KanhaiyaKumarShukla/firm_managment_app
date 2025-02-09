@@ -27,7 +27,7 @@ sealed class Screen(
         )
 
         object Another : BottomScreen(
-            "Time","Time",
+            "Other","Other",
             R.drawable.about_us
         )
 

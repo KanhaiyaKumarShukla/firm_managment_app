@@ -24,7 +24,6 @@ class NoAdminRepository {
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
-
         try {
             database.collection("Members")
                 .document(phoneNumber)

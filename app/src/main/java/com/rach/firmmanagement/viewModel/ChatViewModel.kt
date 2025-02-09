@@ -33,18 +33,24 @@ class ChatViewModel : ViewModel() {
         else ->
             currentUserNumber
     }
+    private val _loading = MutableStateFlow(false)
+    val loading: StateFlow<Boolean> = _loading
 
     fun fetchMessages(
         adminPhoneNumber: String
     ) {
         viewModelScope.launch {
+            _loading.value = true
             repository.fetchMessages(
                 adminPhoneNumber,
                 employeeNumber,
                 onSuccess = { fetchedMessages ->
+                    _loading.value = false
                     _messages.value = fetchedMessages
                 },
                 onFailure = {
+                    _loading.value = false
+                    // Handle failure
                     _messages.value= emptyList()
                 }
             )

@@ -68,8 +68,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.DpOffset
 import com.rach.firmmanagement.HomeScreen.ProfileOutlinedTextField
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.GeofenceItems
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
+import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.GeofenceViewModel
@@ -133,8 +135,12 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                androidx.compose.material.CircularProgressIndicator(
+                    color = blueAcha,
+                    strokeWidth = 4.dp
+                )
             }
+
         } else {
             Column(
                 modifier = Modifier
@@ -235,7 +241,8 @@ fun ProfileScreen(
 @Composable
 fun EmployeeProfileEditableScreen(
     adminViewModel: AdminViewModel=viewModel(),
-    employee: ViewAllEmployeeDataClass,
+    profileViewModel: ProfileViewModel,
+    employee: AddStaffDataClass,
     geofenceViewModel: GeofenceViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 
 ){
@@ -263,7 +270,7 @@ fun EmployeeProfileEditableScreen(
     LaunchedEffect(Unit) {
         scope.launch {
             adminViewModel.loadStaff(employee.phoneNumber.toString())
-            geofenceViewModel.fetchAllGeofences()
+            geofenceViewModel.fetchAllGeofences(employee.firmName.toString())
         }
     }
 

@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rach.firmmanagement.R
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
+import com.rach.firmmanagement.dataClassImp.EmployeeIdentity
 import com.rach.firmmanagement.dataClassImp.Festival
 import com.rach.firmmanagement.dataClassImp.RegularHolidayItems
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
@@ -63,6 +65,7 @@ import com.rach.firmmanagement.ui.theme.progressBarBgColor
 import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.HolidayViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.launch
 
 import java.util.*
@@ -70,7 +73,9 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HolidayAddScreen1(viewModel: AdminViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
+fun HolidayAddScreen1(
+    viewModel: AdminViewModel = viewModel()
+) {
 
     val holidayName by viewModel.holidayName.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
@@ -361,25 +366,32 @@ fun HolidayAddScreen(holidayViewModel: HolidayViewModel, viewModel: AllEmployeeV
 @Composable
 fun HolidayAddScreen(
     holidayViewModel: HolidayViewModel,
-    viewModel: AllEmployeeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    viewModel: AllEmployeeViewModel,
+    profileViewModel : ProfileViewModel
 ) {
     // State to keep track of selected employees
-    val selectedEmployees = remember { mutableStateOf(setOf<ViewAllEmployeeDataClass>()) }
+    val selectedEmployees = remember { mutableStateOf(setOf<AddStaffDataClass>()) }
 
     // State for tab selection
     var selectedTab by remember { mutableStateOf("Regular") }
 
     // Employees and Loading States
     val employees = viewModel.employeeList.value
-    val isLoading = viewModel.isLoading.value
+    val isLoading = viewModel.isEmployeeLoading.value
+
+    val admin = viewModel.adminList.value
+    val isAdminLoading = viewModel.isAdminLoading.value
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (isLoading) {
+        if (isLoading || isAdminLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(
+                    color = blueAcha,
+                    strokeWidth = 4.dp
+                )
             }
         } else {
             // Employee Selection Section
@@ -393,7 +405,8 @@ fun HolidayAddScreen(
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
                 selectedEmployees = selectedEmployees.value,
-                holidayViewModel = holidayViewModel
+                holidayViewModel = holidayViewModel,
+                profileViewModel = profileViewModel
             )
         }
     }
@@ -401,12 +414,12 @@ fun HolidayAddScreen(
 
 @Composable
 fun EmployeeSelection(
-    employees: List<ViewAllEmployeeDataClass>,
-    selectedEmployees: MutableState<Set<ViewAllEmployeeDataClass>>
+    employees: List<AddStaffDataClass>,
+    selectedEmployees: MutableState<Set<AddStaffDataClass>>
 ) {
     var expanded by remember { mutableStateOf(false) }
     val isAllSelected = selectedEmployees.value.size == employees.size
-    val allEmployeesOption = ViewAllEmployeeDataClass(name = "All") // Define "All" option
+    val allEmployeesOption = AddStaffDataClass(name = "All") // Define "All" option
     val updatedEmployees = listOf(allEmployeesOption) + employees
 
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -481,10 +494,14 @@ fun EmployeeSelection(
 fun HolidayTabMenu(
     selectedTab: String,
     onTabSelected: (String) -> Unit,
-    selectedEmployees: Set<ViewAllEmployeeDataClass>,
-    holidayViewModel: HolidayViewModel
+    selectedEmployees: Set<AddStaffDataClass>,
+    holidayViewModel: HolidayViewModel,
+    profileViewModel: ProfileViewModel
 ) {
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val employeeLoading by profileViewModel.loading
+    val adminNumber = employeeIdentity.adminNumber.toString()
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
@@ -544,11 +561,13 @@ fun HolidayTabMenu(
                                         message = "Congratulations! Holiday is Successfully added!"
                                     )
                                     notification.fireNotification()
-                                }
+                                },
+                                adminNumber = adminNumber
                             )
                         }
                     },
-                    repository = HolidayRepository()
+                    repository = HolidayRepository(),
+                    profileViewModel = profileViewModel
                 )
 
                 "Public Festival" -> FestivalHolidayScreen(
@@ -576,11 +595,13 @@ fun HolidayTabMenu(
                                     )
 
                                     notification.fireNotification()
-                                }
+                                },
+                                adminNumber = adminNumber
                             )
                         }
                     },
-                    repository = HolidayRepository()
+                    repository = HolidayRepository(),
+                    profileViewModel = profileViewModel
                 )
             }
         }
@@ -591,7 +612,7 @@ fun HolidayTabMenu(
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter", "UnusedMaterialScaffoldPaddingParameter")
 @Composable
-fun FestivalHolidayScreen(repository : HolidayRepository, onSave: (List<Festival>) -> Unit) {
+fun FestivalHolidayScreen(repository : HolidayRepository, onSave: (List<Festival>) -> Unit, profileViewModel: ProfileViewModel) {
 
     val viewModel: HolidayViewModel = viewModel(
         factory = HolidayViewModelFactory(repository)
@@ -599,6 +620,7 @@ fun FestivalHolidayScreen(repository : HolidayRepository, onSave: (List<Festival
 
     val festivals by viewModel.festivals.collectAsState()
     val context = LocalContext.current
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var festivalName by remember { mutableStateOf("") }
@@ -613,7 +635,7 @@ fun FestivalHolidayScreen(repository : HolidayRepository, onSave: (List<Festival
 
     LaunchedEffect(key1 = year) {
         Log.d("Holiday", year.toString())
-        viewModel.fetchFestivals(year.toString()) // Fetch festivals for the current year
+        viewModel.fetchFestivals(year.toString(), firmName = employeeIdentity.firmName.toString()) // Fetch festivals for the current year
     }
     val datePickerDialog = DatePickerDialog(
         context, { _,
@@ -740,7 +762,7 @@ fun FestivalHolidayScreen(repository : HolidayRepository, onSave: (List<Festival
                 confirmButton = {
                     CustomButton(
                         onClick = {
-                            viewModel.addFestival(Festival(festivalName, festivalDate, festivalYear, festivalMonth))
+                            viewModel.addFestival(Festival(festivalName, festivalDate, festivalYear, festivalMonth), firmName = employeeIdentity.firmName.toString())
                             showDialog = false
                         },
                         text="Save",
@@ -840,7 +862,7 @@ fun DateSelection(
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
-fun RegularHolidayScreen(repository : HolidayRepository, onSave: (RegularHolidayItems) -> Unit) {
+fun RegularHolidayScreen(repository : HolidayRepository, onSave: (RegularHolidayItems) -> Unit, profileViewModel: ProfileViewModel) {
 
     val viewModel: HolidayViewModel = viewModel(
         factory = HolidayViewModelFactory(repository)
@@ -859,9 +881,10 @@ fun RegularHolidayScreen(repository : HolidayRepository, onSave: (RegularHoliday
             "Last Sunday of Month"
         ))
     }*/
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.fetchAdditionalHolidays() // Fetch festivals for the current year
+        viewModel.fetchAdditionalHolidays(employeeIdentity.firmName.toString()) // Fetch festivals for the current year
     }
 
     var showAddHolidayDialog by remember { mutableStateOf(false) }
@@ -972,7 +995,7 @@ fun RegularHolidayScreen(repository : HolidayRepository, onSave: (RegularHoliday
             onDismissRequest = { showAddHolidayDialog = false },
             onConfirm = {
                 if (it.isNotEmpty()) {
-                    viewModel.addAdditionalHolidays(it)
+                    viewModel.addAdditionalHolidays(it, firmName = employeeIdentity.firmName.toString())
                 }
             }
         )

@@ -363,6 +363,45 @@ class PunchInPunchOutRepository {
     }
 
     suspend fun setOutForWork(
+        firmName:String,
+        adminPhoneNumber:String,
+        newValue:Int,
+        name: String,
+        phoneNumber: String,
+        onSuccess: () -> Unit,
+        onFailure: () -> Unit
+    ) {
+
+        val TAG="Att"
+        val updateAdminPhoneNumber = when {
+            adminPhoneNumber.startsWith("+91") -> adminPhoneNumber
+            else ->
+                "+91$adminPhoneNumber"
+        }
+        val data=OutForWork(
+            date = todayDate,
+            duration = newValue*60,
+            name = name,
+            firmName = firmName,
+            adminPhoneNumber = updateAdminPhoneNumber,
+            phoneNumber = phoneNumber
+        )
+        try {
+            val firmRef =database.collection("Firms")
+                .document(firmName)
+                .collection("pendingAttendance")
+            val docRef = firmRef.add(data).await() // Adds a document and gets reference
+            val docId = docRef.id
+
+            // Update the document with the new ID field
+            docRef.update("id", docId).await()
+            onSuccess()
+        }catch (e: Exception) {
+            Log.d("Att", "Error in out of Work: ${e.message}")
+            onFailure()
+        }
+    }
+    suspend fun setOutForWork1(
         adminPhoneNumber: String,
         newValue:Int,
         name: String,

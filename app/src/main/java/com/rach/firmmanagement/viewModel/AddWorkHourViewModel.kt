@@ -3,6 +3,7 @@ package com.rach.firmmanagement.viewModel
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddWorkingHourDataClass
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.repository.AdminRepository
@@ -62,7 +63,8 @@ class AddWorkHourViewModel(private val repository: AdminRepository = AdminReposi
 
     fun addWorkHours(
         onSuccess: () -> Unit,
-        onFailure: () -> Unit
+        onFailure: () -> Unit,
+        adminPhoneNumber: String
     ) {
         viewModelScope.launch {
 
@@ -75,7 +77,8 @@ class AddWorkHourViewModel(private val repository: AdminRepository = AdminReposi
                 ),
                 date = currentDate,
                 onSuccess = onSuccess,
-                onFailure = onFailure
+                onFailure = onFailure,
+                adminPhoneNumber = adminPhoneNumber
 
             )
 
@@ -85,7 +88,8 @@ class AddWorkHourViewModel(private val repository: AdminRepository = AdminReposi
 
 
     fun addWorkHoursForEmployees(
-        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        selectedEmployees: Set<AddStaffDataClass>,
+        adminPhoneNumber: String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
@@ -100,7 +104,8 @@ class AddWorkHourViewModel(private val repository: AdminRepository = AdminReposi
                     currentTime = currentTime
                 ),
                 onSuccess = onSuccess,
-                onFailure = onFailure
+                onFailure = onFailure,
+                adminPhoneNumber = adminPhoneNumber
             )
         }
     }

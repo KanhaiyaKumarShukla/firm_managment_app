@@ -16,5 +16,13 @@ data class AddStaffDataClass(
     val timeVariation:String? = "",
     val timeVariationUnit:String? = "",
     val leaveDays:String? = "",
-    val workPlace: GeofenceItems = GeofenceItems()
+    val workPlace: GeofenceItems = GeofenceItems(),
+    val firmName:String? = "",
+    val adminNumber:String?=""
+)
+
+data class EmployeeIdentity(
+    val phoneNumber: String?="",
+    val adminPhoneNumber:String?="",
+    val firmName:String?=""
 )

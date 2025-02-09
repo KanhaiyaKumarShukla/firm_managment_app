@@ -20,15 +20,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -65,18 +67,27 @@ import com.rach.firmmanagement.ui.theme.progressBarBgColor
 import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.GeofenceViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.launch
+import java.net.URLEncoder
 
 @SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 fun AddStaff(
     navController: NavController,
+    profileViewModel: ProfileViewModel,
     adminViewModel: AdminViewModel = viewModel(),
-    allEmployeeViewModel: AllEmployeeViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    allEmployeeViewModel: AllEmployeeViewModel,
     geofenceViewModel: GeofenceViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
 
     val context = LocalContext.current
+
+    var showDialog by remember { mutableStateOf(false) }
+    val selectedPermissions by adminViewModel.selectedPermissions.collectAsState()
+
+    val permissionsList = listOf("Attendance", "Working Hours", "Holiday", "Task", "Expenses", "Geofence")
+
 
     val name by adminViewModel.empName.collectAsState()
     val phoneNumber by adminViewModel.phoneNumber.collectAsState()
@@ -86,6 +97,8 @@ fun AddStaff(
     val timeVariation by adminViewModel.timeVariation.collectAsState()
     val selectedTimeVariationUnit by adminViewModel.timeVariationUnit.collectAsState()
 
+    val selectedAdminNumber by adminViewModel.selectedAdminNumber.collectAsState()
+    val selectedFirmName by adminViewModel.selectedFirmName.collectAsState()
 
     val leaveDays by adminViewModel.leaveDays.collectAsState()
 
@@ -101,23 +114,33 @@ fun AddStaff(
     val regDateError = buttonState && registrationDate.isEmpty()
     val timeVariationError = buttonState && timeVariation.isEmpty()
     val leaveDaysError = buttonState && leaveDays.isEmpty()
+    val adminNumberError = buttonState && selectedAdminNumber.isEmpty()
+    val firmNameError = buttonState && selectedFirmName.isEmpty()
+    var selectedRole by remember { mutableStateOf("") }
+
     val geofences by geofenceViewModel.geofences.collectAsState()
     val scope = rememberCoroutineScope()
 
     var selectedSalaryUnit = adminViewModel.salaryUnit.collectAsState()
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val employeeLoading by profileViewModel.loading
+
     LaunchedEffect(Unit) {
-        geofenceViewModel.fetchAllGeofences()
+        geofenceViewModel.fetchAllGeofences(employeeIdentity.firmName.toString())
     }
 
-    if (progressState) {
+    if (progressState || employeeLoading) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(progressBarBgColor.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
         }
     }
 
@@ -169,31 +192,91 @@ fun AddStaff(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        CustomOutlinedTextFiled(
-            value = role,
-            onValueChange = {
-                adminViewModel.onChangeRole(it)
-            },
-            label = "Enter Employee Role",
-            singleLine = true,
-            isError = roleError,
-            readOnly = false
-        )
-        /*
+        Column (modifier = Modifier.fillMaxWidth()){
+            var expanded by remember { mutableStateOf(false) }
+            val roles = listOf("Admin", "Employee")
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = Color.Gray,
+                        shape = RoundedCornerShape(6)
+                    )
+            ) {
+                OutlinedTextField(
+                    value = selectedRole,
+                    onValueChange = { },
+                    label = { Text("Select Role") },
+                    readOnly = true,
+                    modifier = Modifier.weight(1f)
+                        .clickable {
+                            expanded = true
+                            Log.d("role", "123 role clicked: $selectedRole")
+                        },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent
+                    )
+                )
+                Box {
+                    IconButton(onClick = { expanded = !expanded }) {
+                        Icon(
+                            imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowLeft,
+                            contentDescription = "Expand"
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        offset = DpOffset(x = 0.dp, y = 0.dp)
+                    ) {
+                        roles.forEach { role ->
+                            Log.d("role", "123 role item: $role")
+                            DropdownMenuItem(
+                                onClick = {
+                                    selectedRole = role
+                                    expanded = false
+                                    // Notify the adminViewModel about the selected geofence
+                                    adminViewModel.onChangeRole(role)
+                                }
+                            ) {
+                                Text(text = role)
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(10.dp))
 
         CustomOutlinedTextFiled(
-            value = salary,
+            value = selectedFirmName,
             onValueChange = {
-                adminViewModel.onChangeSalary(it)
+                adminViewModel.onChangeSelectedFirmName(it)
             },
-            label = "Salary",
+            label = "FirmName",
             singleLine = true,
-            isError = salaryError,
+            isError = firmNameError,
             readOnly = false
         )
-         */
+        if (selectedRole != "Admin") {
+            Spacer(modifier = Modifier.height(10.dp))
+
+            CustomOutlinedTextFiled(
+                value = selectedAdminNumber,
+                onValueChange = {
+                    adminViewModel.onChangeSelectedAdminNumber(it)
+                },
+                label = "AdminNumber",
+                singleLine = true,
+                isError = adminNumberError,
+                readOnly = false
+            )
+        }
 
         Spacer(modifier = Modifier.height(10.dp))
 
@@ -306,40 +389,73 @@ fun AddStaff(
             isError = regDateError,
             readOnly = true
         )
+        Spacer(modifier = Modifier.height(10.dp))
+        if(selectedRole=="Admin") {
+            CustomOutlinedTextFiled(
+                value = selectedPermissions.joinToString(", "),
+                onValueChange = {
+                },
+                label = "Select Permission for Admin",
+                singleLine = false,
+                isError = selectedPermissions.isEmpty(),
+                readOnly = true,
+                modifier = Modifier.clickable { showDialog = true } // Open dialog on click
+                    .fillMaxWidth()
+            )
+        }
         Spacer(modifier = Modifier.height(40.dp))
 
 
         CustomButton(
             onClick = {
-                adminViewModel.onButtonStateChange(true)
-                scope.launch {
-                    adminViewModel.onChangeProgressState(true)
-                    adminViewModel.addEmployee(
-                        onSuccess = {
-                            Toast.makeText(context, "Registration SuccessFul", Toast.LENGTH_SHORT)
-                                .show()
-                            adminViewModel.onChangeProgressState(false)
-                            allEmployeeViewModel.loadAllEmployee()
-                            val notification = MyNotification(
-                                context = context,
-                                title = "Firm Management App",
-                                message = "Congratulations $name Register as Employee"
-                            )
+                if(!nameError && !phoneNumberError && !roleError && !salaryError && !regDateError && !timeVariationError && !leaveDaysError && (selectedRole=="Employee" || !selectedPermissions.isEmpty())) {
 
-                            notification.fireNotification()
-                        },
-                        onFailure = {
-                            Toast.makeText(context, "Registration Failed", Toast.LENGTH_LONG).show()
-                            adminViewModel.onChangeProgressState(false)
-                            val notification = MyNotification(
-                                context = context,
-                                title = "Firm Management App",
-                                message = "Employee Added Failed"
-                            )
+                    adminViewModel.onButtonStateChange(true)
+                    scope.launch {
+                        adminViewModel.onChangeProgressState(true)
+                        adminViewModel.savePermissions(
+                            firmName = selectedFirmName,
+                            phoneNumber = phoneNumber,
+                            onSuccess = {
+                                Toast.makeText(context, "Permissions Saved", Toast.LENGTH_SHORT).show()
+                            },
+                            onFailure = {
+                                Toast.makeText(context, "Failed to Save", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                        adminViewModel.addEmployee(
+                            onSuccess = {
+                                Toast.makeText(
+                                    context,
+                                    "Registration SuccessFul",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                adminViewModel.onChangeProgressState(false)
+                                allEmployeeViewModel.loadAllEmployee(employeeIdentity.firmName.toString())
+                                val notification = MyNotification(
+                                    context = context,
+                                    title = "Firm Management App",
+                                    message = "Congratulations $name Register as $selectedRole"
+                                )
 
-                            notification.fireNotification()
-                        }
-                    )
+                                notification.fireNotification()
+                            },
+                            onFailure = {
+                                Toast.makeText(context, "Registration Failed", Toast.LENGTH_LONG)
+                                    .show()
+                                adminViewModel.onChangeProgressState(false)
+                                val notification = MyNotification(
+                                    context = context,
+                                    title = "Firm Management App",
+                                    message = "Employee Added Failed"
+                                )
+
+                                notification.fireNotification()
+                            }
+                        )
+                    }
+                }else{
+                    Toast.makeText(context, "Please fill in all the required fields.", Toast.LENGTH_SHORT).show()
                 }
             },
             text = "Register",
@@ -382,7 +498,7 @@ fun AddStaff(
 
             CustomButton(
                 onClick = {
-                    if(!nameError && !phoneNumberError && !roleError && !salaryError && !regDateError && !timeVariationError && !leaveDaysError){
+                    if(!nameError && !phoneNumberError && !roleError && !salaryError && !regDateError && !timeVariationError && !leaveDaysError ){
                         // naviage to work hours
                         if (isRegistered) {
                             // Navigate to the HolidayTabMenu
@@ -407,6 +523,51 @@ fun AddStaff(
                 text = "Add Work Time"
             )
         }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Select Permissions") },
+            text = {
+                Column {
+                    permissionsList.forEach { permission ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { adminViewModel.togglePermission(permission) }
+                                .padding(8.dp)
+                        ) {
+                            Checkbox(
+                                checked = selectedPermissions.contains(permission),
+                                onCheckedChange = { adminViewModel.togglePermission(permission) }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = permission)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                CustomButton(
+                    onClick = {
+                        showDialog = false
+                    },
+                    text="Save"
+                )
+            },
+            dismissButton = {
+                CustomButton(
+                    onClick = {
+                        showDialog = false
+
+                    },
+                    text="Cancel"
+                )
+
+            }
+        )
     }
 }
 

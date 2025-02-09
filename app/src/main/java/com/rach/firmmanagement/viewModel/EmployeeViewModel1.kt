@@ -93,6 +93,7 @@ class EmployeeViewModel1 : ViewModel() {
 
     fun raiseALeave(
         adminPhoneNumber: String,
+        firmName: String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
@@ -102,6 +103,7 @@ class EmployeeViewModel1 : ViewModel() {
 
             repository.raiseALeave(
                 adminPhoneNumber = adminPhoneNumber,
+                firmName = firmName,
                 employeeleaveData = EmployeeLeaveData(
                     type = _leaveType.value,
                     startingDate = _startingDate.value,
@@ -190,6 +192,7 @@ class EmployeeViewModel1 : ViewModel() {
 
     fun advanceMoney(
         adminPhoneNumber: String,
+        firmName: String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
@@ -198,10 +201,11 @@ class EmployeeViewModel1 : ViewModel() {
             _circularBarState.value = true
             repository.raiseAdvanceMoney(
                 adminPhoneNumber = adminPhoneNumber,
+                firmName = firmName,
                 advanceMoneyData = AdvanceMoneyData(
                     reason = _reasonAdavnce.value,
                     amount = _amount.value,
-                    date = currentDate,
+                    date = currentDate.replace('/', '-'),
                     emplPhoneNumber = currentUserPhoneNumber,
                     status = 0,
                     time = currentTime
@@ -298,6 +302,7 @@ class EmployeeViewModel1 : ViewModel() {
 
     fun raiseExpense(
         adminPhoneNumber: String,
+        firmName:String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ){
@@ -312,6 +317,7 @@ class EmployeeViewModel1 : ViewModel() {
                     selectedDate = selectedDate,
                     employeeNumber = currentUserPhoneNumber
                 ),
+                firmName = firmName,
                 onSuccess = {
                     _circularBarState.value = false
                     onSuccess()

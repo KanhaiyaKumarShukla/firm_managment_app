@@ -11,6 +11,7 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.SetOptions
 import com.google.gson.Gson
+import com.google.i18n.phonenumbers.Phonenumber
 import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.AddTaskDataClass
 import com.rach.firmmanagement.dataClassImp.AddWorkingHourDataClass
@@ -34,6 +35,15 @@ class AdminRepository {
     val database = FirebaseFirestore.getInstance()
     val currentUserPhoneNumber = FirebaseAuth.getInstance().currentUser?.phoneNumber.toString()
 
+    suspend fun saveAdminPermissions(firmName: String, phoneNumber: String, permissions: List<String>) {
+        val data = mapOf("permissions" to permissions)
+        database.collection("Firms").document(firmName)
+            .collection("Admin").document(phoneNumber)
+            .collection("Permissions").document(System.currentTimeMillis().toString())
+            .set(data)
+            .await()
+    }
+
     suspend fun addStaff(
         addStaffDataClass: AddStaffDataClass,
         employeePhoneNumber: String,
@@ -43,14 +53,48 @@ class AdminRepository {
     ) {
 
         try {
-            val data = database.collection("Members").document(adminPhoneNumber)
 
-            data.collection("Employee")
-                .document(employeePhoneNumber)
+            /*
+            if(addStaffDataClass.role=="Employee"){
+                val data = database.collection("Members").document(addStaffDataClass.adminNumber.toString())
+                data.collection("Employee")
+                    .document(employeePhoneNumber)
+                    .set(addStaffDataClass)
+                    .await()
+            }
+
+             */
+            val firmRef=database.collection("Firms")
+                .document(addStaffDataClass.firmName.toString())
+
+            // Set placeholder to ensure document exists
+            firmRef.set(mapOf("placeholder" to true)).await()
+
+            // Add the employee to the respective role collection
+            firmRef.collection(addStaffDataClass.role.toString())
+                .document(addStaffDataClass.phoneNumber.toString())
                 .set(addStaffDataClass)
                 .await()
 
-            onSuccess()
+            database.collection("Employee")
+                .document(addStaffDataClass.phoneNumber.toString())
+                .set(addStaffDataClass)
+                .await()
+
+            val genderCollection = database.collection("Gender")
+            genderCollection.get()
+                .addOnSuccessListener { documents ->
+                    val document = documents.documents.firstOrNull() // Get the first document
+                    if (document != null) {
+                        val genderDocRef = genderCollection.document(document.id)
+                        genderDocRef.update(mapOf(addStaffDataClass.phoneNumber to addStaffDataClass.role.toString()))
+                            .addOnSuccessListener { onSuccess() }
+                            .addOnFailureListener { onFailure() }
+                    }else {
+                        onFailure() // No document found in the "Gender" collection
+                    }
+                }
+                .addOnFailureListener { onFailure() }
 
 
         } catch (_: Exception) {
@@ -69,11 +113,17 @@ class AdminRepository {
         onFailure: () -> Unit
     ) {
 
+        val updatedAdminPhoneNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
+
         try {
             val formattedDate = date.replace("/", "-")
 
             val data = database.collection("Members")
-                .document(adminPhoneNumber)
+                .document(updatedAdminPhoneNumber)
 
             data.collection("Holiday")
                 .document(formattedDate)
@@ -125,10 +175,15 @@ class AdminRepository {
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
+        val updatedAdminPhoneNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
         try {
             // Reference to the document with a generated ID
             val taskRef = database.collection("Members")
-                .document(adminPhoneNumber)
+                .document(updatedAdminPhoneNumber)
                 .collection("Tasks")
                 .document() // Generate a unique document ID
 
@@ -148,18 +203,25 @@ class AdminRepository {
     }
 
     suspend fun assignTask(
-        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        selectedEmployees: Set<AddStaffDataClass>,
         addTaskDataClass: AddTaskDataClass,
+        adminPhoneNumber:String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ){
+        val updatedAdminPhoneNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
+
         try {
 
             val batch=database.batch()
             selectedEmployees.forEach { employee ->
                 val employeeDocRef = database
                     .collection("Members")
-                    .document(currentUserPhoneNumber)
+                    .document(updatedAdminPhoneNumber)
                     .collection("Employee")
                     .document(employee.phoneNumber.toString())
                     .collection("Task")
@@ -168,7 +230,7 @@ class AdminRepository {
                 // Ensure parent documents exist
                 val adminDocRef = database
                     .collection("Members")
-                    .document(currentUserPhoneNumber)
+                    .document(updatedAdminPhoneNumber)
 
                 Log.d("Work Hours", "Adding work hours for: $employee")
                 batch.set(adminDocRef, mapOf("created" to true), SetOptions.merge())
@@ -187,17 +249,23 @@ class AdminRepository {
 
     suspend fun addWorkingHour(
         addWorkingHourDataClass: AddWorkingHourDataClass,
+        adminPhoneNumber:String,
         date: String,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
+        val updatedAdminPhoneNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
 
         try {
 
             val formattedDate = date.replace("/", "-")
 
             val data = database.collection("Members")
-                .document(currentUserPhoneNumber)
+                .document(updatedAdminPhoneNumber)
 
             data.collection("WorkingHour")
                 .document(formattedDate)
@@ -215,11 +283,18 @@ class AdminRepository {
     }
 
     fun addWorkHoursForEmployees(
-        selectedEmployees: Set<ViewAllEmployeeDataClass>,
+        selectedEmployees: Set<AddStaffDataClass>,
+        adminPhoneNumber:String,
         workHourData: AddWorkingHourDataClass,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
+
+        val updatedAdminPhoneNumber = if (adminPhoneNumber.startsWith("+91")) {
+            adminPhoneNumber
+        } else {
+            "+91$adminPhoneNumber"
+        }
         val db = FirebaseFirestore.getInstance()
         val batch = db.batch()
 
@@ -227,7 +302,7 @@ class AdminRepository {
             selectedEmployees.forEach { employee ->
                 val employeeDocRef = db
                     .collection("Members")
-                    .document(currentUserPhoneNumber)
+                    .document(updatedAdminPhoneNumber)
                     .collection("Employee")
                     .document(employee.phoneNumber.toString())
                     .collection("WorkHour")
@@ -236,7 +311,7 @@ class AdminRepository {
                 // Ensure parent documents exist
                 val yearDocRef = db
                     .collection("Members")
-                    .document(currentUserPhoneNumber)
+                    .document(updatedAdminPhoneNumber)
 
                 Log.d("Work Hours", "Adding work hours for: $employee")
                 batch.set(yearDocRef, mapOf("created" to true), SetOptions.merge())
@@ -255,17 +330,16 @@ class AdminRepository {
 
 
     suspend fun loadTasks(
-        adminPhoneNumber: String,
-        employees: List<ViewAllEmployeeDataClass>
+        employees: List<AddStaffDataClass>
     ): List<AddTaskDataClass> {
-        val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
-            adminPhoneNumber
-        } else {
-            "+91$adminPhoneNumber"
-        }
 
         val taskList = mutableListOf<AddTaskDataClass>()
         for (employee in employees) {
+            val updateAdminNumber = if (employee.adminNumber?.startsWith("+91")==true) {
+                employee.adminNumber
+            } else {
+                "+91${employee.adminNumber}"
+            }
             val employeeTasksData = database.collection("Members")
                 .document(updateAdminNumber)
                 .collection("Employee")
@@ -288,7 +362,7 @@ class AdminRepository {
     }
     suspend fun loadOneEmployeeTask(
         adminPhoneNumber: String,
-        employee: ViewAllEmployeeDataClass
+        employee: AddStaffDataClass
     ): List<AddTaskDataClass> {
 
         val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
@@ -532,7 +606,7 @@ class AdminRepository {
 
     suspend fun fetchAttendance(
         adminPhoneNumber: String,
-        selectedEmployees: List<ViewAllEmployeeDataClass>,
+        selectedEmployees: List<AddStaffDataClass>,
         from: String,
         to: String,
         selectedMonth: String,
@@ -627,37 +701,39 @@ class AdminRepository {
 
     private fun parsePunchInPunchOut(document: DocumentSnapshot): PunchInPunchOut {
         return PunchInPunchOut(
-            currentTime = document.getString("currentTime"),
+            currentTime = document.getString("currentTime")?:"",
             absent = document.getString("absent") ?: "Present",
-            date = document.getString("date"),
-            punchTime = document.getString("punchTime"),
-            punchOutTime = document.getString("punchOutTime"),
-            locationPunchTime = document.get("locationPunchTime")?.let {
-                // Parse GeofenceItems manually if needed
-                Gson().fromJson(it.toString(), GeofenceItems::class.java)
-            },
-            name = document.getString("name"),
-            phoneNumberString = document.getString("phoneNumberString"),
+            date = document.getString("date")?:"",
+            punchTime = document.getString("punchTime")?:"",
+            punchOutTime = document.getString("punchOutTime")?:"",
+            locationPunchTime = document.get("locationPunchTime")?.let { locationData ->
+                if (locationData is Map<*, *>) {
+                    GeofenceItems(
+                        title = locationData["title"] as? String ?: "",
+                        latitude = locationData["latitude"] as? String?: "",
+                        longitude = locationData["longitude"] as? String?: "",
+                        radius = locationData["radius"] as? String?: "",
+                        adminNo = locationData["adminNo"] as? String?: "",
+                        firmName = locationData["firmName"] as? String?: ""
+                    )
+                } else {
+                    GeofenceItems()
+                }
+            } ?: GeofenceItems(),
+            name = document.getString("name")?:"",
+            phoneNumberString = document.getString("phoneNumberString")?:"",
             totalMinutes = document.getLong("totalMinutes")?.toInt() ?: 0
         )
     }
 
     // employee profile
     suspend fun getStaff(
-        adminPhoneNumber: String,
         employeePhoneNumber: String,
         onSuccess: (AddStaffDataClass) -> Unit,
         onFailure: () -> Unit
     ) {
         try {
-            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
-                adminPhoneNumber
-            } else {
-                "+91$adminPhoneNumber"
-            }
-            val documentSnapshot = database.collection("Members")
-                .document(updateAdminNumber)
-                .collection("Employee")
+            val documentSnapshot = database.collection("Employee")
                 .document(employeePhoneNumber)
                 .get()
                 .await()
@@ -677,21 +753,13 @@ class AdminRepository {
     }
 
     suspend fun updateStaff(
-        adminPhoneNumber: String,
         employeePhoneNumber: String,
         updatedStaff: AddStaffDataClass,
         onSuccess: () -> Unit,
         onFailure: () -> Unit
     ) {
         try {
-            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
-                adminPhoneNumber
-            } else {
-                "+91$adminPhoneNumber"
-            }
-            database.collection("Members")
-                .document(updateAdminNumber)
-                .collection("Employee")
+            database.collection("Employee")
                 .document(employeePhoneNumber)
                 .set(updatedStaff)
                 .await()
@@ -777,8 +845,7 @@ class AdminRepository {
 
 
     suspend fun getEmployeeExpense(
-        adminPhoneNumber: String,
-        selectedEmployees: List<ViewAllEmployeeDataClass>,
+        selectedEmployees: List<AddStaffDataClass>,
         from: String,
         to: String,
         selectedMonth: String,
@@ -786,11 +853,6 @@ class AdminRepository {
         onFailure: () -> Unit
     ) {
         try {
-            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
-                adminPhoneNumber
-            } else {
-                "+91$adminPhoneNumber"
-            }
             val attendanceList = mutableListOf<Expense>()
             Log.d("Attendance", "Fetching attendance for: $selectedEmployees, From: $from, To: $to, Month: $selectedMonth")
 
@@ -801,6 +863,11 @@ class AdminRepository {
 
                 for (employee in selectedEmployees) {
                     calendar.time = fromDate
+                    val updateAdminNumber = if (employee.adminNumber?.startsWith("+91") == true) {
+                        employee.adminNumber
+                    } else {
+                        "+91${employee.adminNumber}"
+                    }
 
                     while (calendar.time <= toDate) {
                         val targetYear = calendar.get(Calendar.YEAR).toString()
@@ -832,7 +899,8 @@ class AdminRepository {
                                     } ?: emptyList(),
                                     moneyRaise = data["moneyRaise"] as? String ?: "",
                                     remaining = data["remaining"] as? String ?: "",
-                                    selectedDate = data["selectedDate"] as? String ?: ""
+                                    selectedDate = data["selectedDate"] as? String ?: "",
+                                    status = data["status"] as? Boolean == true
                                 )
                                 attendanceList.add(expense)
                             }
@@ -847,6 +915,12 @@ class AdminRepository {
                 val targetYear = parts[1]
 
                 for (employee in selectedEmployees) {
+                    val updateAdminNumber = if (employee.adminNumber?.startsWith("+91") == true) {
+                        employee.adminNumber
+                    } else {
+                        "+91${employee.adminNumber}"
+                    }
+
                     val yearDocRef = database.collection("Members")
                         .document(updateAdminNumber)
                         .collection("Employee")

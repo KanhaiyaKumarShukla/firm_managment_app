@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.maps.model.LatLng
 import com.rach.firmmanagement.HomeScreen.EditDialog
 import com.rach.firmmanagement.MainActivity
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.GeofenceItems
 import com.rach.firmmanagement.geofencing.GeofenceForegroundService
 import com.rach.firmmanagement.geofencing.GeofenceHelper
@@ -51,6 +53,7 @@ import com.rach.firmmanagement.ui.theme.progressBarBgColor
 import com.rach.firmmanagement.viewModel.EmlAllTask
 import com.rach.firmmanagement.viewModel.GeofenceViewModel
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -297,13 +300,14 @@ fun PunchInOutButtons(
 @Composable
 fun PunchInOutApp(
     viewModel: EmlAllTask,
-    loginViewModel: LoginViewModel,
+    profileViewModel: ProfileViewModel,
     navigateToEmployeeAttendence: () -> Unit,
 ) {
     val context = LocalContext.current
     val activity = context as Activity
     val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
     val gola by viewModel.gola.collectAsState()
     var hasLocationPermission by remember { mutableStateOf(false) }
     var hasBackgroundLocationPermission by remember { mutableStateOf(false) }
@@ -357,37 +361,51 @@ fun PunchInOutApp(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (gola) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(color = progressBarBgColor.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = Color(0xFFf0f0f0)
-            ) {
-                Column(
+    if ( loading) { // Use .value for State objects
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
+    }else {
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (gola) {
+                Box(
                     modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .fillMaxSize()
+                        .background(color = progressBarBgColor.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    CurrentTimeDisplay()
-                    PunchInOutButtons(
-                        context = context,
-                        viewModel = viewModel,
-                        loginViewModel = loginViewModel,
-                        hasLocationPermission = hasLocationPermission,
-                        hasBackgroundLocationPermission = hasBackgroundLocationPermission
-                    )
-                    ViewHistorySection(navigateToEmployeeAttendence)
+                    CircularProgressIndicator()
+                }
+            } else {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color(0xFFf0f0f0)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.SpaceBetween,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CurrentTimeDisplay()
+                        PunchInOutButtons(
+                            context = context,
+                            viewModel = viewModel,
+                            employeeIdentity = employeeIdentity,
+                            hasLocationPermission = hasLocationPermission,
+                            hasBackgroundLocationPermission = hasBackgroundLocationPermission,
+                        )
+                        ViewHistorySection(navigateToEmployeeAttendence)
+                    }
                 }
             }
         }
@@ -398,9 +416,9 @@ fun PunchInOutApp(
 fun PunchInOutButtons(
     context: Context,
     viewModel: EmlAllTask,
-    loginViewModel: LoginViewModel,
+    employeeIdentity: AddStaffDataClass,
     hasLocationPermission: Boolean,
-    hasBackgroundLocationPermission: Boolean
+    hasBackgroundLocationPermission: Boolean,
 ) {
     val scope = rememberCoroutineScope()
     val geofenceHelper = remember { GeofenceHelper(context) }
@@ -408,8 +426,8 @@ fun PunchInOutButtons(
     val currentLocation by viewModel.location.collectAsState()
     var showAlertDialog by remember { mutableStateOf(false) }
     var alertMessage by remember { mutableStateOf("") }
-    val adminPhoneNumber by loginViewModel.firmOwnerNumber.collectAsState()
-    val nameHai by viewModel.employees.collectAsState()
+    val adminPhoneNumber = employeeIdentity.adminNumber.toString()
+    val firmName=employeeIdentity.firmName.toString()
     var address by remember { mutableStateOf("Fetching location...") }
     var nearByGeofence by remember { mutableStateOf<GeofenceItems?>(null) }
     val progressState by viewModel.progressBarState.collectAsState()
@@ -426,7 +444,7 @@ fun PunchInOutButtons(
     }
     LaunchedEffect(Unit) {
         Log.d("Punch", "Fetching geofences...")
-        viewModel.getGeofence(adminPhoneNumber)
+        viewModel.getGeofence(firmName)
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.e("GeofenceHelper", "Location services are disabled.")
@@ -548,7 +566,7 @@ fun PunchInOutButtons(
             }
         }
 
-        OutOfWorkPortion(viewModel,adminPhoneNumber, nameHai.toString(), context)
+        OutOfWorkPortion(viewModel = viewModel, employeeIdentity = employeeIdentity, context = context)
 
         if (showAlertDialog) {
 
@@ -573,8 +591,8 @@ fun PunchInOutButtons(
 
                                 latitude = currentLocation!!.latitude.toString(),
                                 longitude = currentLocation!!.longitude.toString(),
-                                radius = "",
-                                title = "Unknown: $address",
+                                radius = "10",
+                                title = "Unknown Geofence_ ${System.currentTimeMillis()}",
                                 adminNo = adminPhoneNumber,
                             )
                         }
@@ -589,7 +607,7 @@ fun PunchInOutButtons(
                         Toast.makeText(context, "Punch In Successful", Toast.LENGTH_SHORT).show()
                         viewModel.punchIn(
                             adminPhoneNumber = adminPhoneNumber,
-                            name = nameHai.firstOrNull()?.name.toString()  , // Use the passed employee name
+                            name = employeeIdentity.name.toString(), // Use the passed employee name
                             location = geofence,
                             onSuccess = {
                                 Toast.makeText(
@@ -622,12 +640,15 @@ fun PunchInOutButtons(
 @Composable
 fun OutOfWorkPortion(
     viewModel: EmlAllTask,
-    adminPhoneNumber:String,
-    name: String,
+    employeeIdentity: AddStaffDataClass,
     context: Context
 ) {
     var textFieldValue by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val firmName = employeeIdentity.firmName.toString()
+    val adminPhoneNumber = employeeIdentity.adminNumber.toString()
+    val name = employeeIdentity.name.toString()
+    val phoneNumber = employeeIdentity.phoneNumber.toString()
     Column(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -650,9 +671,11 @@ fun OutOfWorkPortion(
             onClick = {
                 scope.launch {
                     viewModel.setOutForWork(
+                        firmName = firmName,
                         adminPhoneNumber = adminPhoneNumber,
                         newValue = textFieldValue.toInt(),
                         name = name,
+                        phoneNumber=phoneNumber,
                         onSuccess = {
                             Toast.makeText(context, "Added Successfully", Toast.LENGTH_LONG)
                                 .show()

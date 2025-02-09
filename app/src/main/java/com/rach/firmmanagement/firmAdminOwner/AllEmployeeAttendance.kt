@@ -45,6 +45,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.PunchInPunchOut
 import com.rach.firmmanagement.dataClassImp.ViewAllEmployeeDataClass
 import com.rach.firmmanagement.employee.EmployAttendance
@@ -56,6 +57,7 @@ import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -277,13 +279,14 @@ fun AllEmployeeAttendance(
 
 @Composable
 fun EmployeeAttendance(
-    selectedEmployees: Set<ViewAllEmployeeDataClass>,
+    selectedEmployees: Set<AddStaffDataClass>,
     attendanceData: List<PunchInPunchOut>,
     fromDate: String,
     toDate: String,
     selectedMonth: String,
     attendanceLoading: Boolean,
-    onFetchAttendance: (Set<ViewAllEmployeeDataClass>, String, String, String) -> Unit,
+    employeeIdentityLoading: Boolean,
+    onFetchAttendance: (Set<AddStaffDataClass>, String, String, String) -> Unit,
     onMonthChange: (String) -> Unit,
     onDateRangeChange: (String, String) -> Unit,
     toShowOneEmployee: Boolean=false
@@ -291,7 +294,7 @@ fun EmployeeAttendance(
     val showMonthPickerDialog = remember { mutableStateOf(false) }
     val showDateRangePickerDialog = remember { mutableStateOf(false) }
 
-    if (attendanceLoading) { // Use .value for State objects
+    if (attendanceLoading || employeeIdentityLoading) { // Use .value for State objects
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -416,8 +419,9 @@ fun EmployeeAttendance(
 
 @Composable
 fun AllEmployeeAttendance(
-    allEmployeeViewModel: AllEmployeeViewModel = viewModel(),
-    adminViewModel: AdminViewModel = viewModel()
+    allEmployeeViewModel: AllEmployeeViewModel,
+    adminViewModel: AdminViewModel = viewModel(),
+    profileViewModel: ProfileViewModel
 ) {
     val employees by allEmployeeViewModel.employeeList
     val selectedEmployees = remember { mutableStateOf(employees.toSet()) }
@@ -427,10 +431,14 @@ fun AllEmployeeAttendance(
     val selectedMonth by adminViewModel.selectedMonth.collectAsState()
     val attendanceLoading by adminViewModel.loading.collectAsState()
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val employeeIdentityLoading by profileViewModel.loading
+
     LaunchedEffect(employees) {
         selectedEmployees.value = employees.toSet()
         adminViewModel.fetchAttendance(
             selectedEmployees = selectedEmployees.value.toList(),
+            adminPhoneNumber = employeeIdentity.adminNumber.toString(),
             from = fromDate,
             to = toDate,
             selectedMonth = ""
@@ -453,10 +461,12 @@ fun AllEmployeeAttendance(
             toDate = toDate,
             selectedMonth = selectedMonth,
             attendanceLoading=attendanceLoading,
+            employeeIdentityLoading = employeeIdentityLoading,
             onFetchAttendance = { selectedEmployees, selectedMonth, from, to ->
                 Log.d("Attendance", "Fetch: $selectedEmployees, $selectedMonth, $from, $to")
                 adminViewModel.fetchAttendance(
                     selectedEmployees = selectedEmployees.toList(),
+                    adminPhoneNumber = employeeIdentity.adminNumber.toString(),
                     selectedMonth = selectedMonth,
                     from = from,
                     to = to

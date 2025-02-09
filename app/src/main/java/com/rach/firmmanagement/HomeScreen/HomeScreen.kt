@@ -30,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Card
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.FloatingActionButton
 import androidx.compose.material.FloatingActionButtonDefaults
 import androidx.compose.material.Icon
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +72,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.rach.firmmanagement.R
+import com.rach.firmmanagement.employee.NoDataFound
 import com.rach.firmmanagement.firmAdminOwner.ScreenAdmin
 import com.rach.firmmanagement.navigation.NavDrawerNavigation
 import com.rach.firmmanagement.navigationDrawer.NavViewModel
@@ -82,7 +85,9 @@ import com.rach.firmmanagement.ui.theme.FirmManagementTheme
 import com.rach.firmmanagement.ui.theme.blueAcha
 
 import com.rach.firmmanagement.ui.theme.fontBablooBold
+import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.LoginViewModel
+import com.rach.firmmanagement.viewModel.ProfileViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -93,7 +98,8 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     loginViewModel: LoginViewModel,
-    navigateToLogin: () -> Unit
+    navigateToLogin: () -> Unit,
+    profileViewModel: ProfileViewModel = viewModel()
 ) {
 
     val context = LocalContext.current
@@ -115,6 +121,8 @@ fun HomeScreen(
 
     val currentUserName = FirebaseAuth.getInstance().currentUser?.displayName.toString()
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
 
     val requestPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -179,6 +187,8 @@ fun HomeScreen(
 
         val notificationUtils = NotificationUtils(context,scope)
 
+        profileViewModel.getEmployeeIdentity()
+
         if (notificationUtils.hasPermissionNotification(context)) {
             // Already Permission
         } else {
@@ -208,77 +218,44 @@ fun HomeScreen(
             */
         }
     }
-
-    val bottomBar: @Composable () -> Unit = {
-        if (currentScreen is Screen.DrawerScreen || currentScreen == Screen.BottomScreen.Home) {
-            BottomNavigation(
-                modifier = Modifier.wrapContentSize(),
-                backgroundColor = blueAcha,
-                elevation = 8.dp
-            ) {
-
-                screensInBottom.forEach { item ->
-                    BottomNavigationItem(selected = currentRoute == item.bRoute,
-                        onClick = { controller.navigate(item.bRoute) },
-                        icon = {
-                            Icon(
-                                painter = painterResource(id = item.icon),
-                                contentDescription = "Bottom App Bar"
-                            )
-                        },
-                        selectedContentColor = Color.White,
-                        unselectedContentColor = Color.Black,
-                        label = { Text(text = item.bTitle) }
-                    )
-
-                }
-
-
-            }
+    if(loading || employeeIdentity.firmName==""){
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
         }
-    }
+    }else {
 
-    Scaffold(
+        val bottomBar: @Composable () -> Unit = {
+            if (currentScreen is Screen.DrawerScreen || currentScreen == Screen.BottomScreen.Home) {
+                BottomNavigation(
+                    modifier = Modifier.wrapContentSize(),
+                    backgroundColor = blueAcha,
+                    elevation = 8.dp
+                ) {
 
-        scaffoldState = scaffoldstate,
-        bottomBar = bottomBar,
-        topBar = {
+                    val filteredScreens = screensInBottom.filterNot { item ->
+                        item.bRoute == "Other" && employeeIdentity.role != "Admin"
+                    }
 
-            AppBarView(title = title.value, onNavClick = {
-
-                scope.launch {
-                    scaffoldstate.drawerState.open()
-                }
-
-            })
-
-
-        },
-        drawerContent = {
-            LazyColumn {
-                items(screenDrawerItemList) { item ->
-
-                    DrawerItemDesign(selected = currentRoute == item.dRoute, item = item) {
-
-                        scope.launch {
-                            scaffoldstate.drawerState.close()
-                        }
-
-                        if (item.dRoute == "Share") {
-
-                            // have to implement share functionality
-
-                        } else if (item.dRoute == "LogOut") {
-
-                            Firebase.auth.signOut()
-                            navigateToLogin()
-
-
-                        } else {
-                            controller.navigate(item.dRoute)
-                            title.value = item.dTitle
-
-                        }
+                    filteredScreens.forEach { item ->
+                        BottomNavigationItem(selected = currentRoute == item.bRoute,
+                            onClick = { controller.navigate(item.bRoute) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(id = item.icon),
+                                    contentDescription = "Bottom App Bar"
+                                )
+                            },
+                            selectedContentColor = Color.White,
+                            unselectedContentColor = Color.Black,
+                            label = { Text(text = item.bTitle) }
+                        )
 
                     }
 
@@ -287,14 +264,64 @@ fun HomeScreen(
             }
         }
 
+        Scaffold(
 
-    ) {
-        NavDrawerNavigation(
-            navController = controller,
-            viewModel = viewModel,
-            pd = it,
-            loginViewModel = loginViewModel
-        )
+            scaffoldState = scaffoldstate,
+            bottomBar = bottomBar,
+            topBar = {
+
+                AppBarView(title = title.value, onNavClick = {
+
+                    scope.launch {
+                        scaffoldstate.drawerState.open()
+                    }
+
+                })
+
+
+            },
+            drawerContent = {
+                LazyColumn {
+                    items(screenDrawerItemList) { item ->
+
+                        DrawerItemDesign(selected = currentRoute == item.dRoute, item = item) {
+
+                            scope.launch {
+                                scaffoldstate.drawerState.close()
+                            }
+
+                            if (item.dRoute == "Share") {
+
+                                // have to implement share functionality
+
+                            } else if (item.dRoute == "LogOut") {
+
+                                Firebase.auth.signOut()
+                                navigateToLogin()
+
+
+                            } else {
+                                controller.navigate(item.dRoute)
+                                title.value = item.dTitle
+
+                            }
+
+                        }
+
+
+                    }
+                }
+            }
+
+
+        ) {
+            NavDrawerNavigation(
+                navController = controller,
+                viewModel = viewModel,
+                pd = it,
+                loginViewModel = loginViewModel
+            )
+        }
     }
 
 }
@@ -372,109 +399,137 @@ fun AdminPanelScreen(
     navigateToEmployeeAttendance: () -> Unit,
     navigateToAllExpense: () -> Unit,
     navigateToAddGeofence: () -> Unit,
-    navigateToChatScreen: () -> Unit
+    navigateToChatScreen: () -> Unit,
+    navigateToRegularization:() ->Unit,
+    allEmployeeViewModel: AllEmployeeViewModel,
+    profileViewModel: ProfileViewModel
 ) {
 
     val scrollState = rememberScrollState()
     val scaffoldState = rememberScaffoldState()
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
 
-    Scaffold(
-        scaffoldState = scaffoldState,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navigateToAddStaff() },
-                backgroundColor = blueAcha,
-                elevation = FloatingActionButtonDefaults.elevation(10.dp)
+    LaunchedEffect(Unit) {
+        allEmployeeViewModel.loadAllEmployee(employeeIdentity.firmName.toString())
+    }
+
+    if (loading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
+    } else {
+        Scaffold(
+            scaffoldState = scaffoldState,
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { navigateToAddStaff() },
+                    backgroundColor = blueAcha,
+                    elevation = FloatingActionButtonDefaults.elevation(10.dp)
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Add, contentDescription = "Add Employee",
+                        tint = Color.White
+                    )
+
+                }
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .padding(it)
+                    .verticalScroll(scrollState)
             ) {
 
-                Icon(
-                    imageVector = Icons.Default.Add, contentDescription = "Add Employee",
-                    tint = Color.White
+                TopWelcomeSection(adminName = "Admin")
+
+                Spacer(modifier = Modifier.height(16.dp))
+                //  Hours Option
+                OptionCard(
+                    title = "Add Hours",
+                    description = "Add or edit working hours",
+                    drawableRes = R.drawable.add,  // Using AccessTime icon for hours
+                    onClick = { navigateToWorkingHours() }
                 )
 
+                // Holiday Option
+                OptionCard(
+                    title = "Add Holiday",
+                    description = "Add or remove holidays",
+                    drawableRes = R.drawable.holiday,  // Calendar icon
+                    onClick = { navigateToHoliday() }
+                )
+
+                OptionCard(
+                    title = "Add Task",
+                    description = "Add Tasks",
+                    drawableRes = R.drawable.about_us,  // Calendar icon
+                    onClick = { navigateToTask() }
+                )
+
+                // View Employees Option
+                OptionCard(
+                    title = "View Employees",
+                    description = "Check employee details",
+                    drawableRes = R.drawable.about,
+                    onClick = { navigateToViewEmpl() }
+                )
+
+                // View All Task
+                OptionCard(
+                    title = "View All Task",
+                    description = "See monthly Tasks",
+                    drawableRes = R.drawable.report,  // Reports icon for viewing reports
+                    onClick = { navigateToViewAllTask() }
+                )
+
+                // Employee Attendance
+                OptionCard(
+                    title = "Employee Attendance",
+                    description = "See Employee Attendance",
+                    drawableRes = R.drawable.baseline_account_circle_24,  // Settings icon for app settings
+                    onClick = { navigateToEmployeeAttendance() }
+                )
+
+                OptionCard(
+                    title = "All Expenses",
+                    description = "See Expenses",
+                    drawableRes = R.drawable.expense_list_ic,  // Settings icon for app settings
+                    onClick = { navigateToAllExpense() }
+                )
+
+                OptionCard(
+                    title = "Add Geofence",
+                    description = "Add Work Center",
+                    drawableRes = R.drawable.location_icon,  // Settings icon for app settings
+                    onClick = { navigateToAddGeofence() }
+                )
+
+                OptionCard(
+                    title = "Chatting",
+                    description = "Chat With Employee",
+                    drawableRes = R.drawable.chat_icon,  // Settings icon for app settings
+                    onClick = { navigateToChatScreen() }
+                )
+
+                OptionCard(
+                    title = "Regularization",
+                    description = "Regularize the Employee Data",
+                    drawableRes = R.drawable.regularization_ic,  // Settings icon for app settings
+                    onClick = { navigateToRegularization() }
+                )
             }
+
         }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .padding(it)
-                .verticalScroll(scrollState)
-        ) {
-
-            TopWelcomeSection(adminName = "Admin")
-
-            Spacer(modifier = Modifier.height(16.dp))
-            //  Hours Option
-            OptionCard(
-                title = "Add Hours",
-                description = "Add or edit working hours",
-                drawableRes = R.drawable.add,  // Using AccessTime icon for hours
-                onClick = { navigateToWorkingHours() }
-            )
-
-            // Holiday Option
-            OptionCard(
-                title = "Add Holiday",
-                description = "Add or remove holidays",
-                drawableRes = R.drawable.holiday,  // Calendar icon
-                onClick = { navigateToHoliday() }
-            )
-
-            OptionCard(
-                title = "Add Task",
-                description = "Add Tasks",
-                drawableRes = R.drawable.about_us,  // Calendar icon
-                onClick = { navigateToTask() }
-            )
-
-            // View Employees Option
-            OptionCard(
-                title = "View Employees",
-                description = "Check employee details",
-                drawableRes = R.drawable.about,
-                onClick = { navigateToViewEmpl() }
-            )
-
-            // View All Task
-            OptionCard(
-                title = "View All Task",
-                description = "See monthly Tasks",
-                drawableRes = R.drawable.report,  // Reports icon for viewing reports
-                onClick = { navigateToViewAllTask() }
-            )
-
-            // Employee Attendance
-            OptionCard(
-                title = "Employee Attendance",
-                description = "See Employee Attendance",
-                drawableRes = R.drawable.baseline_account_circle_24,  // Settings icon for app settings
-                onClick = { navigateToEmployeeAttendance() }
-            )
-
-            OptionCard(
-                title = "All Expenses",
-                description = "See Expenses",
-                drawableRes = R.drawable.expense_list_ic,  // Settings icon for app settings
-                onClick = { navigateToAllExpense() }
-            )
-
-            OptionCard(
-                title = "Add Geofence",
-                description = "Add Work Center",
-                drawableRes = R.drawable.location_icon,  // Settings icon for app settings
-                onClick = { navigateToAddGeofence() }
-            )
-
-            OptionCard(
-                title = "Chatting",
-                description = "Chat With Employee",
-                drawableRes = R.drawable.chat_icon,  // Settings icon for app settings
-                onClick = { navigateToChatScreen() }
-            )
-        }
-
     }
 
 
@@ -558,7 +613,7 @@ fun OptionCard(
 @Composable
 fun NoDij() {
     FirmManagementTheme {
-        AdminPanelScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+        AdminPanelScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, allEmployeeViewModel = AllEmployeeViewModel(), profileViewModel = ProfileViewModel())
     }
 }
 

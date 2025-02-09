@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Firm Management</string>
     <string name="title_activity_all_employee_attendance">AllEmployeeAttendance</string>
+    <string name="default_web_client_id">530510197461-5rj668tn0jfuejaclfreda0j3hnvjvvm.apps.googleusercontent.com</string>
 </resources>
