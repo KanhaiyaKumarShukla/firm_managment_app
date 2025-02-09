@@ -614,11 +614,6 @@ class AdminRepository {
         onFailure: () -> Unit
     ){
         try {
-            val updateAdminNumber = if (adminPhoneNumber.startsWith("+91")) {
-                adminPhoneNumber
-            } else {
-                "+91$adminPhoneNumber"
-            }
             val attendanceList = mutableListOf<PunchInPunchOut>()
             Log.d("Attendance", "Fetching attendance for: $selectedEmployees, From: $from, To: $to, Month: $selectedMonth")
             if(selectedMonth.isEmpty()){
@@ -627,6 +622,11 @@ class AdminRepository {
                 val calendar = Calendar.getInstance()
                 for (employee in selectedEmployees) {
                     calendar.time = fromDate
+                    val updateAdminNumber = if (employee.adminNumber?.startsWith("+91")==true) {
+                        employee.adminNumber
+                    } else {
+                        "+91${employee.adminNumber}"
+                    }
 
                     while (calendar.time <= toDate) {
                         val targetYear = calendar.get(Calendar.YEAR).toString()
@@ -664,6 +664,13 @@ class AdminRepository {
                 val targetYear = parts[1]
 
                 for (employee in selectedEmployees) {
+
+                    val updateAdminNumber = if (employee.adminNumber?.startsWith("+91")==true) {
+                        employee.adminNumber
+                    } else {
+                        "+91${employee.adminNumber}"
+                    }
+
                     val yearDocRef = database.collection("Members")
                         .document(updateAdminNumber)
                         .collection("Employee")
