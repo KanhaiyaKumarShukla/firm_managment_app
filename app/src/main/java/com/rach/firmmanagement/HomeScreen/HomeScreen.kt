@@ -3,6 +3,7 @@ package com.rach.firmmanagement.HomeScreen
 import android.Manifest
 import android.app.Activity
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,6 +86,7 @@ import com.rach.firmmanagement.ui.theme.FirmManagementTheme
 import com.rach.firmmanagement.ui.theme.blueAcha
 
 import com.rach.firmmanagement.ui.theme.fontBablooBold
+import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import com.rach.firmmanagement.viewModel.LoginViewModel
 import com.rach.firmmanagement.viewModel.ProfileViewModel
@@ -185,6 +187,8 @@ fun HomeScreen(
         })
     LaunchedEffect(Unit) {
 
+        Log.d("Hins", "In Home Screen")
+
         val notificationUtils = NotificationUtils(context,scope)
 
         profileViewModel.getEmployeeIdentity()
@@ -232,19 +236,21 @@ fun HomeScreen(
     }else {
 
         val bottomBar: @Composable () -> Unit = {
-            if (currentScreen is Screen.DrawerScreen || currentScreen == Screen.BottomScreen.Home) {
+            if (employeeIdentity.role != "App Owner" &&
+                (currentScreen is Screen.DrawerScreen || currentScreen == Screen.BottomScreen.Home)) {
+
                 BottomNavigation(
                     modifier = Modifier.wrapContentSize(),
                     backgroundColor = blueAcha,
                     elevation = 8.dp
                 ) {
-
                     val filteredScreens = screensInBottom.filterNot { item ->
                         item.bRoute == "Other" && employeeIdentity.role != "Admin"
                     }
 
                     filteredScreens.forEach { item ->
-                        BottomNavigationItem(selected = currentRoute == item.bRoute,
+                        BottomNavigationItem(
+                            selected = currentRoute == item.bRoute,
                             onClick = { controller.navigate(item.bRoute) },
                             icon = {
                                 Icon(
@@ -256,13 +262,11 @@ fun HomeScreen(
                             unselectedContentColor = Color.Black,
                             label = { Text(text = item.bTitle) }
                         )
-
                     }
-
-
                 }
             }
         }
+
 
         Scaffold(
 
@@ -402,19 +406,27 @@ fun AdminPanelScreen(
     navigateToChatScreen: () -> Unit,
     navigateToRegularization:() ->Unit,
     allEmployeeViewModel: AllEmployeeViewModel,
-    profileViewModel: ProfileViewModel
+    profileViewModel: ProfileViewModel,
+    adminViewModel: AdminViewModel
 ) {
 
     val scrollState = rememberScrollState()
     val scaffoldState = rememberScaffoldState()
     val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
     val loading by profileViewModel.loading
+    val firmName = employeeIdentity.firmName
+    val phoneNumber = employeeIdentity.phoneNumber
+    val permissionLoading by adminViewModel.permissionLoading.collectAsState()
+    val adminPermissions by adminViewModel.adminPermissions.collectAsState()
+    val role = employeeIdentity.role
 
     LaunchedEffect(Unit) {
         allEmployeeViewModel.loadAllEmployee(employeeIdentity.firmName.toString())
+        adminViewModel.getAdminPermissions(firmName = firmName.toString(), phoneNumber = phoneNumber.toString())
+        //Log.d("permission", "Permission: ${adminPermissions.toString()}")
     }
 
-    if (loading) {
+    if (loading || permissionLoading) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -449,32 +461,39 @@ fun AdminPanelScreen(
                     .padding(it)
                     .verticalScroll(scrollState)
             ) {
+                Log.d("permission", "$role, $adminPermissions")
 
-                TopWelcomeSection(adminName = "Admin")
+                TopWelcomeSection(adminName = role.toString())
 
                 Spacer(modifier = Modifier.height(16.dp))
                 //  Hours Option
-                OptionCard(
-                    title = "Add Hours",
-                    description = "Add or edit working hours",
-                    drawableRes = R.drawable.add,  // Using AccessTime icon for hours
-                    onClick = { navigateToWorkingHours() }
-                )
+                if(role!="Admin" || adminPermissions.contains("Working Hours")) {
+                    OptionCard(
+                        title = "Add Hours",
+                        description = "Add or edit working hours",
+                        drawableRes = R.drawable.add,  // Using AccessTime icon for hours
+                        onClick = { navigateToWorkingHours() }
+                    )
+                }
 
                 // Holiday Option
-                OptionCard(
-                    title = "Add Holiday",
-                    description = "Add or remove holidays",
-                    drawableRes = R.drawable.holiday,  // Calendar icon
-                    onClick = { navigateToHoliday() }
-                )
+                if(role!="Admin" || adminPermissions.contains("Holiday")) {
+                    OptionCard(
+                        title = "Add Holiday",
+                        description = "Add or remove holidays",
+                        drawableRes = R.drawable.holiday,  // Calendar icon
+                        onClick = { navigateToHoliday() }
+                    )
+                }
 
-                OptionCard(
-                    title = "Add Task",
-                    description = "Add Tasks",
-                    drawableRes = R.drawable.about_us,  // Calendar icon
-                    onClick = { navigateToTask() }
-                )
+                if(role!="Admin" || adminPermissions.contains("Task")) {
+                    OptionCard(
+                        title = "Add Task",
+                        description = "Add Tasks",
+                        drawableRes = R.drawable.about_us,  // Calendar icon
+                        onClick = { navigateToTask() }
+                    )
+                }
 
                 // View Employees Option
                 OptionCard(
@@ -492,27 +511,35 @@ fun AdminPanelScreen(
                     onClick = { navigateToViewAllTask() }
                 )
 
-                // Employee Attendance
-                OptionCard(
-                    title = "Employee Attendance",
-                    description = "See Employee Attendance",
-                    drawableRes = R.drawable.baseline_account_circle_24,  // Settings icon for app settings
-                    onClick = { navigateToEmployeeAttendance() }
-                )
 
-                OptionCard(
-                    title = "All Expenses",
-                    description = "See Expenses",
-                    drawableRes = R.drawable.expense_list_ic,  // Settings icon for app settings
-                    onClick = { navigateToAllExpense() }
-                )
+                if(role!="Admin" || adminPermissions.contains("Attendance")) {
+                    // Employee Attendance
+                    OptionCard(
+                        title = "Employee Attendance",
+                        description = "See Employee Attendance",
+                        drawableRes = R.drawable.baseline_account_circle_24,  // Settings icon for app settings
+                        onClick = { navigateToEmployeeAttendance() }
+                    )
+                }
 
-                OptionCard(
-                    title = "Add Geofence",
-                    description = "Add Work Center",
-                    drawableRes = R.drawable.location_icon,  // Settings icon for app settings
-                    onClick = { navigateToAddGeofence() }
-                )
+                if(role!="Admin" || adminPermissions.contains("Expenses")) {
+
+                    OptionCard(
+                        title = "All Expenses",
+                        description = "See Expenses",
+                        drawableRes = R.drawable.expense_list_ic,  // Settings icon for app settings
+                        onClick = { navigateToAllExpense() }
+                    )
+                }
+
+                if(role!="Admin" || adminPermissions.contains("Geofence")) {
+                    OptionCard(
+                        title = "Add Geofence",
+                        description = "Add Work Center",
+                        drawableRes = R.drawable.location_icon,  // Settings icon for app settings
+                        onClick = { navigateToAddGeofence() }
+                    )
+                }
 
                 OptionCard(
                     title = "Chatting",
@@ -613,7 +640,7 @@ fun OptionCard(
 @Composable
 fun NoDij() {
     FirmManagementTheme {
-        AdminPanelScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, allEmployeeViewModel = AllEmployeeViewModel(), profileViewModel = ProfileViewModel())
+        AdminPanelScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, allEmployeeViewModel = AllEmployeeViewModel(), profileViewModel = ProfileViewModel(), adminViewModel = AdminViewModel())
     }
 }
 

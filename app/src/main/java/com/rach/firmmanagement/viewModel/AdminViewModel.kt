@@ -172,6 +172,29 @@ class AdminViewModel() : ViewModel() {
         }
     }
 
+    private val _adminPermissions = MutableStateFlow<List<String>>(emptyList())
+    val adminPermissions: StateFlow<List<String>> = _adminPermissions
+    private val _permissionLoading = MutableStateFlow(false)
+    val permissionLoading: StateFlow<Boolean> = _permissionLoading
+
+    fun getAdminPermissions(firmName: String, phoneNumber:String) {
+        viewModelScope.launch {
+            _permissionLoading.value = true
+            try {
+                val permissions= repository.getAdminPermissions(
+                    firmName =  firmName,
+                    phoneNumber =  phoneNumber
+                )
+                Log.d("permissions", "Final permission: $permissions")
+                _adminPermissions.value = permissions ?: emptyList()
+                _permissionLoading.value = false
+            } catch (e: Exception) {
+                _adminPermissions.value = emptyList()
+                _permissionLoading.value = false
+            }
+        }
+    }
+
     fun addEmployee(
         onSuccess: () -> Unit,
         onFailure: () -> Unit

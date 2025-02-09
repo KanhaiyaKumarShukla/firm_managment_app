@@ -44,6 +44,32 @@ class AdminRepository {
             .await()
     }
 
+    suspend fun getAdminPermissions(firmName: String, phoneNumber: String): List<String>? {
+        return try {
+            Log.d("permission", "Fetching latest permissions for $phoneNumber, $firmName")
+            val snapshot = database.collection("Firms").document(firmName)
+                .collection("Admin").document(phoneNumber)
+                .collection("Permissions")
+                .orderBy(FieldPath.documentId(), Query.Direction.DESCENDING) // Order by document ID in descending order
+                .limit(1) // Get only the most recent document
+                .get()
+                .await()
+
+            Log.d("permission", snapshot.documents.toString())
+
+            if (!snapshot.isEmpty) {
+                Log.d("permission", "document: ${snapshot.documents.first()}, ${snapshot.documents.first().get("permissions")}")
+                (snapshot.documents.first().get("permissions") as? List<*>)?.map { it.toString() }
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("permission", "Error fetching latest permissions: ${e.message}", e)
+            null
+        }
+    }
+
+
     suspend fun addStaff(
         addStaffDataClass: AddStaffDataClass,
         employeePhoneNumber: String,

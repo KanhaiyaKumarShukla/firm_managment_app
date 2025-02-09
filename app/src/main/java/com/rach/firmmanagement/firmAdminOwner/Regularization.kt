@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +50,7 @@ import com.rach.firmmanagement.employee.LeaveCard
 import com.rach.firmmanagement.login.DataClassRegister
 import com.rach.firmmanagement.necessaryItem.CustomOutlinedTextFiled
 import com.rach.firmmanagement.ui.theme.blueAcha
+import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.GeofenceViewModel
 import com.rach.firmmanagement.viewModel.ProfileViewModel
 import com.rach.firmmanagement.viewModel.RegularizationViewModel
@@ -60,49 +62,86 @@ fun Regularization(
     navigateToExpensesRequest: () -> Unit,
     navigateToAttendanceRequest: () -> Unit,
     navigateToLeaveRequest: () -> Unit,
-    navigateToAdvanceRequest: () -> Unit
+    navigateToAdvanceRequest: () -> Unit,
+    profileViewModel: ProfileViewModel,
+    adminViewModel: AdminViewModel
 ) {
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val loading by profileViewModel.loading
+    val firmName = employeeIdentity.firmName
+    val adminPhoneNumber = employeeIdentity.adminNumber
+    val permissionLoading by adminViewModel.permissionLoading.collectAsState()
+    val adminPermissions by adminViewModel.adminPermissions.collectAsState()
+    val role = employeeIdentity.role
+
+    LaunchedEffect(Unit) {
+        adminViewModel.getAdminPermissions(firmName = firmName.toString(), phoneNumber = adminPhoneNumber.toString())
+        //Log.d("permission", "Permission: ${adminPermissions.toString()}")
+    }
+
     val scrollState = rememberScrollState()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    if (loading || permissionLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
 
-        OptionCard(
-            title = "Employee Request",
-            description = "Add as Employee",
-            drawableRes = R.drawable.add,  // Using AccessTime icon for hours
-            onClick = { navigateToEmployeeRequest() }
-        )
+            if(role!="Admin" || adminPermissions.contains("Add Employee")) {
+                OptionCard(
+                    title = "Employee Request",
+                    description = "Add as Employee",
+                    drawableRes = R.drawable.add,  // Using AccessTime icon for hours
+                    onClick = { navigateToEmployeeRequest() }
+                )
+            }
 
-        OptionCard(
-            title = "Expenses Request",
-            description = "Regularize Expenses",
-            drawableRes = R.drawable.expense,  // Using AccessTime icon for hours
-            onClick = { navigateToExpensesRequest() }
-        )
-        OptionCard(
-            title = "Attendance Request",
-            description = "Regularize Attendance",
-            drawableRes = R.drawable.calendar,  // Using AccessTime icon for hours
-            onClick = { navigateToAttendanceRequest() }
-        )
-        OptionCard(
-            title = "Leave Request",
-            description = "Regularize Leave",
-            drawableRes = R.drawable.baseline_accessibility_new_24,  // Using AccessTime icon for hours
-            onClick = { navigateToLeaveRequest() }
-        )
-        OptionCard(
-            title = "Advance Request",
-            description = "Regularize Advance",
-            drawableRes = R.drawable.expense_list_ic,  // Using AccessTime icon for hours
-            onClick = { navigateToAdvanceRequest() }
-        )
+            if(role!="Admin" || adminPermissions.contains("Expenses")) {
+                OptionCard(
+                    title = "Expenses Request",
+                    description = "Regularize Expenses",
+                    drawableRes = R.drawable.expense,  // Using AccessTime icon for hours
+                    onClick = { navigateToExpensesRequest() }
+                )
+            }
+            if(role!="Admin" || adminPermissions.contains("Attendance")) {
+                OptionCard(
+                    title = "Attendance Request",
+                    description = "Regularize Attendance",
+                    drawableRes = R.drawable.calendar,  // Using AccessTime icon for hours
+                    onClick = { navigateToAttendanceRequest() }
+                )
+            }
+            if(role!="Admin" || adminPermissions.contains("Leave")) {
+                OptionCard(
+                    title = "Leave Request",
+                    description = "Regularize Leave",
+                    drawableRes = R.drawable.baseline_accessibility_new_24,  // Using AccessTime icon for hours
+                    onClick = { navigateToLeaveRequest() }
+                )
+            }
+            if(role!="Admin" || adminPermissions.contains("Advance")) {
+                OptionCard(
+                    title = "Advance Request",
+                    description = "Regularize Advance",
+                    drawableRes = R.drawable.expense_list_ic,  // Using AccessTime icon for hours
+                    onClick = { navigateToAdvanceRequest() }
+                )
+            }
+        }
     }
 }
 
@@ -763,7 +802,7 @@ fun AttendanceRequestList(viewModel: RegularizationViewModel, employeeIdentity: 
 fun RegularizationScreen(
     categoryName: String,
     viewModel: RegularizationViewModel,
-    profileViewModel: ProfileViewModel
+    profileViewModel: ProfileViewModel,
 ) {
 
     val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()

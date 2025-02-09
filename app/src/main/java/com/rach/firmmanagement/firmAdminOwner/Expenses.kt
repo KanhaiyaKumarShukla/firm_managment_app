@@ -163,6 +163,10 @@ fun ViewAllEmployeeExpense(
     var selectedTab by remember { mutableStateOf("All Employees") }
     val employees = viewModel.employeeList.value
     val employeeLoading = viewModel.isEmployeeLoading.value
+
+    val admins = viewModel.adminList.value
+    val adminLoading = viewModel.isAdminLoading.value
+
     val isLoading by adminViewModel.loadingEmployeeExpense.collectAsState()
 
     val employeeExpenses by adminViewModel.employeeExpense.collectAsState(initial = emptyList())
@@ -180,7 +184,7 @@ fun ViewAllEmployeeExpense(
 
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (isLoading || employeeLoading) {
+        if (isLoading || employeeLoading || identityLoading || adminLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -198,7 +202,7 @@ fun ViewAllEmployeeExpense(
             ) {
                 // Employee Selection
                 EmployeeSelection(
-                    employees = employees,
+                    employees = employees + if(employeeIdentity.role == "Super Admin") admins else emptyList(),
                     selectedEmployees = selectedEmployees
                 )
 

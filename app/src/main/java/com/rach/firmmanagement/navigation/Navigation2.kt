@@ -91,7 +91,8 @@ fun Navigation2(){
                navigateToChatScreen={navController.navigate(ScreenAdmin.AdminChatScreen.route)},
                navigateToRegularization={navController.navigate(ScreenAdmin.Regularization.route)},
                allEmployeeViewModel = allEmployeeViewModel,
-               profileViewModel = profileViewModel
+               profileViewModel = profileViewModel,
+               adminViewModel = adminViewModel
            )
         }
 
@@ -152,7 +153,9 @@ fun Navigation2(){
                 },
                 navigateToAdvanceRequest = {
                     navController.navigate(ScreenAdmin.RegularizationScreen.createRoute("Advance"))
-                }
+                },
+                adminViewModel = adminViewModel,
+                profileViewModel = profileViewModel
             )
         }
 

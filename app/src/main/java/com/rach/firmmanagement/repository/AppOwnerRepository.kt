@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.rach.firmmanagement.dataClassImp.AddStaffDataClass
 import com.rach.firmmanagement.dataClassImp.NoAdminDataClass
 
 class AppOwnerRepository {
@@ -45,6 +46,13 @@ class AppOwnerRepository {
                 if (document != null) {
                     val genderDocRef = genderCollection.document(document.id)
 
+                    val addStaffDataClass= AddStaffDataClass(
+                        firmName = noAdminDataClass.firmName,
+                        phoneNumber = noAdminDataClass.phoneNumber,
+                        newPhoneNumber = noAdminDataClass.phoneNumber,
+                        name = noAdminDataClass.ownerName,
+                        role="Super Admin"
+                    )
                     // Add firm details to "App Owner"
                     database.collection("App Owner").document(phoneNumber).set(noAdminDataClass)
                         .addOnSuccessListener {
@@ -52,6 +60,10 @@ class AppOwnerRepository {
                             genderDocRef.update(mapOf(phoneNumber to "Super Admin"))
                                 .addOnSuccessListener { onSuccess() }
                                 .addOnFailureListener { onFailure() }
+                            database.collection("Employee").document(phoneNumber).set(addStaffDataClass)
+                                .addOnSuccessListener {
+                                    Log.d("FirmRepository", "Firm added successfully: $phoneNumber")
+                                }
                         }
                         .addOnFailureListener { onFailure() }
                 } else {
@@ -81,6 +93,13 @@ class AppOwnerRepository {
                             // Also remove the phoneNumber field from the Gender document
                             genderDocRef.update(mapOf(phoneNumber to FieldValue.delete()))
                                 .addOnSuccessListener { onSuccess() }
+                                .addOnFailureListener { onFailure(it) }
+                            database.collection("Employee")
+                                .document(phoneNumber)
+                                .delete()
+                                .addOnSuccessListener {
+                                    Log.d("FirmRepository", "Firm deleted successfully: $phoneNumber")
+                                }
                                 .addOnFailureListener { onFailure(it) }
                         }
                         .addOnFailureListener { onFailure(it) }

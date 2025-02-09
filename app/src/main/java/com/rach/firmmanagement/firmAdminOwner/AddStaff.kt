@@ -86,7 +86,7 @@ fun AddStaff(
     var showDialog by remember { mutableStateOf(false) }
     val selectedPermissions by adminViewModel.selectedPermissions.collectAsState()
 
-    val permissionsList = listOf("Attendance", "Working Hours", "Holiday", "Task", "Expenses", "Geofence")
+    val permissionsList = listOf("Attendance", "Working Hours", "Holiday", "Task", "Expenses", "Geofence", "Add Employee", "Advance")
 
 
     val name by adminViewModel.empName.collectAsState()

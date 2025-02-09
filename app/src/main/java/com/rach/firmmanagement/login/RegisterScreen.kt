@@ -162,17 +162,6 @@ fun RegisterScreen(
                 fontSize = 20.sp
             )
 
-            Row {
-
-                gender.forEach {
-                    RadioButton1(isSelected = genderState == it, title = it) { data ->
-                        viewModel.onRegChangeGenderState(data)
-
-                    }
-                }
-
-            }
-
             Spacer(modifier = Modifier.heightIn(15.dp))
 
 

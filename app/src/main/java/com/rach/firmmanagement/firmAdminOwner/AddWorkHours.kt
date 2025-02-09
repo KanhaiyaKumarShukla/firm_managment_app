@@ -260,12 +260,15 @@ fun AddWorkHoursScreen(
     val employees = allEmployeeViewModel.employeeList.value
     val isLoading = allEmployeeViewModel.isEmployeeLoading.value
 
+    val admin = allEmployeeViewModel.adminList.value
+    val isAdminLoading = allEmployeeViewModel.isAdminLoading.value
+
     val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
     val identityLoading by profileViewModel.loading
 
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (isLoading || identityLoading) {
+        if (isLoading || identityLoading || isAdminLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -277,7 +280,7 @@ fun AddWorkHoursScreen(
             }
         } else {
             EmployeeSelection(
-                employees = employees,
+                employees = employees + if(employeeIdentity.role=="Super Admin")admin else emptyList(),
                 selectedEmployees = selectedEmployees
             )
 

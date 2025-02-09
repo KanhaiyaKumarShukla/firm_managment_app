@@ -51,7 +51,7 @@ class RegisterRepository {
         onFailure: () -> Unit
     ) {
 
-        val roleCollection = if (role == "Employee") "employees" else "employers"
+        val roleCollection = "pendingEmployees"
         val cleanPhoneNumber = phoneNumber.trim()
         val userRef = database.child(roleCollection).child(cleanPhoneNumber)
         Log.d("kan", "User data exists $phoneNumber: $userRef")

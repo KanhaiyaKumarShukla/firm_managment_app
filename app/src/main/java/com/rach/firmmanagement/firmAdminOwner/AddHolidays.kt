@@ -372,6 +372,9 @@ fun HolidayAddScreen(
     // State to keep track of selected employees
     val selectedEmployees = remember { mutableStateOf(setOf<AddStaffDataClass>()) }
 
+    val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
+    val employeeLoading by profileViewModel.loading
+    val role = employeeIdentity.role
     // State for tab selection
     var selectedTab by remember { mutableStateOf("Regular") }
 
@@ -379,11 +382,12 @@ fun HolidayAddScreen(
     val employees = viewModel.employeeList.value
     val isLoading = viewModel.isEmployeeLoading.value
 
+
     val admin = viewModel.adminList.value
     val isAdminLoading = viewModel.isAdminLoading.value
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (isLoading || isAdminLoading) {
+        if (isLoading || isAdminLoading || employeeLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -396,7 +400,7 @@ fun HolidayAddScreen(
         } else {
             // Employee Selection Section
             EmployeeSelection(
-                employees = employees,
+                employees = employees + if(role=="Super Admin")admin else emptyList(),
                 selectedEmployees = selectedEmployees
             )
 

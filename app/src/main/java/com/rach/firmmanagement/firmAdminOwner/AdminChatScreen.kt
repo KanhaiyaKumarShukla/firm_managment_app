@@ -45,13 +45,18 @@ fun AdminChatScreen(
     val messageLoading by adminViewModel.messageLoading.collectAsState()
     val inputMessage by adminViewModel.inputMessage.collectAsState()
     val selectedEmployees = remember { mutableStateOf(setOf<AddStaffDataClass>()) }
+
     val employees = allEmployeeViewModel.employeeList.value
     val employeeLoading by allEmployeeViewModel.isEmployeeLoading
+
+    val admin = allEmployeeViewModel.adminList.value
+    val isAdminLoading = allEmployeeViewModel.isAdminLoading.value
+
     val employeeNumber = adminViewModel.adminPhoneNumber // Assuming this comes from the ViewModel
     val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
     val identity by profileViewModel.loading
 
-    if (employeeLoading || identity || messageLoading) {
+    if (employeeLoading || identity || messageLoading || isAdminLoading) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -64,7 +69,7 @@ fun AdminChatScreen(
     }else {
         AdminMessageScreen(
             messages = messages,
-            employees = employees,
+            employees = employees + if(employeeIdentity.role=="Super Admin")admin else emptyList(),
             selectedEmployees = selectedEmployees,
             inputMessage = inputMessage,
             employeeNumber = employeeNumber,

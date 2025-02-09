@@ -228,7 +228,9 @@ private fun signInWithPhoneAuthCredential(
 
     FirebaseAuth.getInstance().signInWithCredential(credential)
         .addOnCompleteListener { task ->
+            Log.d("Hins", "task sign in : ${task.result}, ${task.exception}, ${task.isCanceled}, ${task.isComplete}, ${task.isSuccessful}")
             if (task.isSuccessful){
+                Log.d("Hins", "navigate to home")
                 navigateToHome()
             }else{
                 showProgressBarCallback()

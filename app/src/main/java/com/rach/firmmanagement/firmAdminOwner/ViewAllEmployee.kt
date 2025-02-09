@@ -2,7 +2,9 @@ package com.rach.firmmanagement.firmAdminOwner
 
 import android.annotation.SuppressLint
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -52,6 +54,8 @@ import com.rach.firmmanagement.ui.theme.blueAcha
 import com.rach.firmmanagement.ui.theme.fontBablooBold
 import com.rach.firmmanagement.viewModel.AllEmployeeViewModel
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.gson.Gson
@@ -61,6 +65,7 @@ import com.rach.firmmanagement.viewModel.AdminViewModel
 import com.rach.firmmanagement.viewModel.ProfileViewModel
 import java.net.URLEncoder
 
+@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun ViewAllEmployee(
@@ -89,7 +94,7 @@ fun ViewAllEmployee(
     val scrollState = rememberScrollState()
     val scaffoldState = rememberScaffoldState()
     val context= LocalContext.current
-    val permissionsList = listOf("Attendance", "Working Hours", "Holiday", "Task", "Expenses", "Geofence")
+    val permissionsList = listOf("Attendance", "Working Hours", "Holiday", "Task", "Expenses", "Geofence", "Add Employee", "Advance")
 
     Scaffold(
         scaffoldState = scaffoldState,
@@ -131,7 +136,7 @@ fun ViewAllEmployee(
             } else {
 
                 LazyColumn {
-                    items(employees) { employee ->
+                    items(employees + if(admins.isNotEmpty()) admins else emptyList()) { employee ->
                         val isSelected = selectedEmployees.value.contains(employee)
                         val selectedEmployeeJson = Uri.encode(Gson().toJson(employee))
                         EmployeeCard(
@@ -219,11 +224,38 @@ fun ViewAllEmployee(
             title = { Text("Confirm Admin Role") },
             text = {
                 Column {
-                    Text("Are you sure you want to make the following employees Admin?")
+
+                    Text(
+                        text = "Are you sure you want to make the following employees Admin?",
+                        style = TextStyle(
+                            fontSize = 18.sp, // Larger font size
+                            fontWeight = FontWeight.Bold // Bold text
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp)) // Add some spacing
+
+                    // List of employee names with normal font weight
                     selectedEmployees.value.forEach { employee ->
-                        Text(text = employee.name.toString())
+                        Text(
+                            text = employee.name.toString(),
+                            style = TextStyle(
+                                fontSize = 16.sp, // Slightly smaller font size
+                                fontWeight = FontWeight.Normal // Normal text
+                            )
+                        )
                     }
-                    Text("Select Permissions")
+
+                    Spacer(modifier = Modifier.height(8.dp)) // Add some spacing
+
+                    // Permissions text with bold and larger font size
+                    Text(
+                        text = "Select Permissions",
+                        style = TextStyle(
+                            fontSize = 18.sp, // Larger font size
+                            fontWeight = FontWeight.Bold // Bold text
+                        )
+                    )
 
                     Column {
                         permissionsList.forEach { permission ->
@@ -232,7 +264,7 @@ fun ViewAllEmployee(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { adminViewModel.togglePermission(permission) }
-                                    .padding(8.dp)
+                                    .padding(4.dp)
                             ) {
                                 androidx.compose.material3.Checkbox(
                                     checked = selectedPermissions.contains(permission),

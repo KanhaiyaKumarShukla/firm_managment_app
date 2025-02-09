@@ -74,18 +74,25 @@ fun ViewAllTask(
     val loading = adminViewModel.loading.collectAsState()
     val employees by allEmployeeViewModel.employeeList
     val employeeLoading by allEmployeeViewModel.isEmployeeLoading
+
+    val admin by allEmployeeViewModel.adminList
+    val isAdminLoading by allEmployeeViewModel.isAdminLoading
+
     val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
     val identityLoading by profileViewModel.loading
+
+    val allEmployees =employees + if(employeeIdentity.role == "Super Admin") admin else emptyList()
+
     LaunchedEffect(Unit) {
         allEmployeeViewModel.loadAllEmployee(employeeIdentity.firmName.toString())
     }
-    LaunchedEffect(employees) {
-        if(!employees.isEmpty()){
-            adminViewModel.loadTasks(employees)
+    LaunchedEffect(allEmployees) {
+        if(!allEmployees.isEmpty()){
+            adminViewModel.loadTasks(allEmployees)
         }
     }
 
-    if (loading.value || employeeLoading || identityLoading) { // Use .value for State objects
+    if (loading.value || employeeLoading || identityLoading || isAdminLoading) { // Use .value for State objects
         Box(
             modifier = Modifier
                 .fillMaxSize()

@@ -158,15 +158,21 @@ fun AddTask(
     val task by adminViewModel.task.collectAsState()
     val progressbar by adminViewModel.state.collectAsState()
     val selectedEmployees = remember { mutableStateOf(setOf<AddStaffDataClass>()) }
+
     val employees = allEmployeeViewModel.employeeList.value // Assuming employee list comes from AdminViewModel
     val employeeLoading by allEmployeeViewModel.isEmployeeLoading
+
+    val admin = allEmployeeViewModel.adminList.value
+    val isAdminLoading = allEmployeeViewModel.isAdminLoading.value
+
     var isError by remember { mutableStateOf(false) }
 
     val employeeIdentity by profileViewModel.employeeIdentity.collectAsState()
     val identityLoading by profileViewModel.loading
+    val role=employeeIdentity.role
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (progressbar || employeeLoading || identityLoading) {
+        if (progressbar || employeeLoading || identityLoading || isAdminLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -184,7 +190,7 @@ fun AddTask(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 EmployeeSelection(
-                    employees = employees,
+                    employees = employees + if(role=="Super Admin")admin else emptyList(),
                     selectedEmployees = selectedEmployees
                 )
 

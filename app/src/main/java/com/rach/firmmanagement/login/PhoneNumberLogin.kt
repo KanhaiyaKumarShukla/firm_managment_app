@@ -183,6 +183,7 @@ fun PhoneNumberLogin(
 
             Spacer(modifier = Modifier.heightIn(10.dp))
 
+            /*
             if (genderState == "Employee") {
                 OutlinedTextField(
                     value = ownerPhoneNumber, onValueChange = {
@@ -196,6 +197,8 @@ fun PhoneNumberLogin(
 
                 )
             }
+
+             */
 
             Spacer(modifier = Modifier.heightIn(15.dp))
 
@@ -246,14 +249,12 @@ fun PhoneNumberLogin(
             Spacer(modifier = Modifier.height(15.dp))
             Button(
                 onClick = { viewModel.signIn(launcher) },
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_google),
-                    contentDescription = "Google Sign-In",
-                    modifier = Modifier.size(24.dp)
+                modifier = Modifier.fillMaxWidth().alpha(buttonAlpha),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    blueAcha
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+            ) {
                 Text(text = "Sign in with Google")
             }
 
@@ -277,22 +278,6 @@ fun PhoneNumberLogin(
                 )
             }
 
-            Spacer(modifier = Modifier.height(15.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-
-                gender.forEach {
-                    RadioButton1(isSelected = genderState == it, title = it) { data ->
-
-                        viewModel.onGenderChanged(data)
-
-                    }
-                }
-
-
-            }
 
             Spacer(modifier = Modifier.height(35.dp))
 

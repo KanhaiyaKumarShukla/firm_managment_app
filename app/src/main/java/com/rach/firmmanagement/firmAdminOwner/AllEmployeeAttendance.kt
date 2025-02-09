@@ -424,6 +424,10 @@ fun AllEmployeeAttendance(
     profileViewModel: ProfileViewModel
 ) {
     val employees by allEmployeeViewModel.employeeList
+    val admin = allEmployeeViewModel.adminList.value
+    val isAdminLoading = allEmployeeViewModel.isAdminLoading.value
+    val employeeLoading by allEmployeeViewModel.isEmployeeLoading
+
     val selectedEmployees = remember { mutableStateOf(employees.toSet()) }
     val fromDate by adminViewModel.fromDate.collectAsState()
     val toDate by adminViewModel.toDate.collectAsState()
@@ -444,42 +448,54 @@ fun AllEmployeeAttendance(
             selectedMonth = ""
         )
     }
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Employee Selection
-        EmployeeSelection(
-            employees = employees,
-            selectedEmployees = selectedEmployees
-        )
+    if (employeeLoading || employeeIdentityLoading || isAdminLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = blueAcha,
+                strokeWidth = 4.dp
+            )
+        }
+    }else {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Employee Selection
+            EmployeeSelection(
+                employees = employees + if(employeeIdentity.role=="Super Admin")admin else emptyList(),
+                selectedEmployees = selectedEmployees
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Employee Attendance
-        EmployeeAttendance(
-            selectedEmployees = selectedEmployees.value,
-            attendanceData = attendanceData,
-            fromDate = fromDate,
-            toDate = toDate,
-            selectedMonth = selectedMonth,
-            attendanceLoading=attendanceLoading,
-            employeeIdentityLoading = employeeIdentityLoading,
-            onFetchAttendance = { selectedEmployees, selectedMonth, from, to ->
-                Log.d("Attendance", "Fetch: $selectedEmployees, $selectedMonth, $from, $to")
-                adminViewModel.fetchAttendance(
-                    selectedEmployees = selectedEmployees.toList(),
-                    adminPhoneNumber = employeeIdentity.adminNumber.toString(),
-                    selectedMonth = selectedMonth,
-                    from = from,
-                    to = to
-                )
-            },
-            onMonthChange = { selected ->
-                adminViewModel.onChangeSelectedMonth(selected)
-            },
-            onDateRangeChange = { from, to ->
-                adminViewModel.onChangeAttendanceFromDate(from)
-                adminViewModel.onChangeAttendanceToDate(to)
-            }
-        )
+            // Employee Attendance
+            EmployeeAttendance(
+                selectedEmployees = selectedEmployees.value,
+                attendanceData = attendanceData,
+                fromDate = fromDate,
+                toDate = toDate,
+                selectedMonth = selectedMonth,
+                attendanceLoading = attendanceLoading,
+                employeeIdentityLoading = employeeIdentityLoading,
+                onFetchAttendance = { selectedEmployees, selectedMonth, from, to ->
+                    Log.d("Attendance", "Fetch: $selectedEmployees, $selectedMonth, $from, $to")
+                    adminViewModel.fetchAttendance(
+                        selectedEmployees = selectedEmployees.toList(),
+                        adminPhoneNumber = employeeIdentity.adminNumber.toString(),
+                        selectedMonth = selectedMonth,
+                        from = from,
+                        to = to
+                    )
+                },
+                onMonthChange = { selected ->
+                    adminViewModel.onChangeSelectedMonth(selected)
+                },
+                onDateRangeChange = { from, to ->
+                    adminViewModel.onChangeAttendanceFromDate(from)
+                    adminViewModel.onChangeAttendanceToDate(to)
+                }
+            )
+        }
     }
 }
 
